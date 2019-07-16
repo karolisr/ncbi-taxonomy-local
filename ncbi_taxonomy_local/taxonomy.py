@@ -14,13 +14,14 @@ from ncbi_taxonomy_local.helpers import extract_md5_hash
 from ncbi_taxonomy_local.helpers import generate_md5_hash_for_file
 from ncbi_taxonomy_local.helpers import make_dir
 
-TAX_BASE_URL = 'ftp://ftp.ncbi.nlm.nih.gov/pub/taxonomy/'
+TAX_BASE_URL_OLD = 'https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/'
+TAX_BASE_URL_NEW = 'https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/new_taxdump/'
 
 # Files expected to be in taxdmp.zip MD5 file should be first
-TAXDMP_FILES = ['taxdmp.zip.md5', 'readme.txt', 'nodes.dmp',
+TAXDMP_FILES = ['new_taxdump.zip.md5', 'readme.txt', 'nodes.dmp',
                 'names.dmp', 'merged.dmp', 'gencode.dmp', 'gc.prt',
                 'division.dmp', 'delnodes.dmp', 'citations.dmp']
-TAXDMP_ARCHIVE = 'taxdmp.zip'
+TAXDMP_ARCHIVE = 'new_taxdump.zip'
 
 # Files expected to be in taxcat.zip MD5 file should be first
 TAXCAT_FILES = ['taxcat.zip.md5', 'categories.dmp']
@@ -70,8 +71,8 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
     taxdmp_archive_path = os.path.join(taxdmp_path, TAXDMP_ARCHIVE)
     taxcat_archive_path = os.path.join(taxcat_path, TAXCAT_ARCHIVE)
 
-    taxdmp_md5_url = os.path.join(TAX_BASE_URL, TAXDMP_FILES[0])
-    taxcat_md5_url = os.path.join(TAX_BASE_URL, TAXCAT_FILES[0])
+    taxdmp_md5_url = os.path.join(TAX_BASE_URL_NEW, TAXDMP_FILES[0])
+    taxcat_md5_url = os.path.join(TAX_BASE_URL_OLD, TAXCAT_FILES[0])
 
     taxdmp_md5_path = os.path.join(taxdmp_path, TAXDMP_FILES[0])
     taxcat_md5_path = os.path.join(taxcat_path, TAXCAT_FILES[0])
@@ -132,7 +133,7 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
     if download_taxdmp:
         download_ncbi_taxonomy_data(
             directory_path=taxdmp_path,
-            archive_url=TAX_BASE_URL + TAXDMP_ARCHIVE,
+            archive_url=TAX_BASE_URL_NEW + TAXDMP_ARCHIVE,
             md5_url=taxdmp_md5_url,
             archive_path=taxdmp_archive_path,
             md5_path=taxdmp_md5_path)
@@ -142,7 +143,7 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
     if download_taxcat:
         download_ncbi_taxonomy_data(
             directory_path=taxcat_path,
-            archive_url=TAX_BASE_URL + TAXCAT_ARCHIVE,
+            archive_url=TAX_BASE_URL_OLD + TAXCAT_ARCHIVE,
             md5_url=taxcat_md5_url,
             archive_path=taxcat_archive_path,
             md5_path=taxcat_md5_path)
