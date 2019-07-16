@@ -106,3 +106,6 @@ venv.bak/
 # Sublime Text
 *.sublime-project
 *.sublime-workspace
+
+# Generated Files
+NCBI_TAXONOMY
