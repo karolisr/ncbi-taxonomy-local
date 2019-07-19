@@ -1,14 +1,14 @@
 # ncbi-taxonomy-local [![Build Status](https://travis-ci.com/karolisr/ncbi-taxonomy-local.svg?branch=master)](https://travis-ci.com/karolisr/ncbi-taxonomy-local)
 Locally-cached NCBI Taxonomy Database for Python
 
-##Initialization:
+Initialization:
 
 ```python
 from ncbi_taxonomy_local import taxonomy
 T = taxonomy('~/NCBI_TAXONOMY_DB')
 ```
 
-##Usage Examples:
+Usage Examples:
 
 ```python
 T.taxids_for_name('Solanum')
