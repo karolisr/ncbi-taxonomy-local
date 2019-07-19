@@ -498,12 +498,23 @@ class Taxonomy(object):
     @classmethod
     def taxids_for_name(cls, name):
         cls.update(check_for_updates=cls._check_for_updates)
+
         return_dict = dict()
+
         return_dict['name'] = name
-        if name in cls._names_taxids_dict:
-            return_dict['tax_ids'] = cls._names_taxids_dict[name]
-        else:
-            return_dict['tax_ids'] = None
+        return_dict['tax_ids'] = None
+
+        if len(name) != 0:
+            name_alt_1 = name[0].upper() + name[1:]
+            name_alt_2 = name[0].lower() + name[1:]
+            names = [name, name_alt_1, name_alt_2]
+            for name in names:
+                if name in cls._names_taxids_dict:
+                    return_dict['tax_ids'] = cls._names_taxids_dict[name]
+                    return_dict['name'] = name
+                    break
+                else:
+                    continue
 
         return return_dict
 
@@ -630,6 +641,8 @@ class Taxonomy(object):
         cls.update(check_for_updates=cls._check_for_updates)
         group_tax_id = str(group_tax_id)
         tax_nodes = cls.taxids_for_name(name=name)['tax_ids']
+        if tax_nodes is None:
+            return None
         ids = [x['tax_id'] for x in tax_nodes]
         lcas = [group_tax_id in
                 cls.lineage_for_taxid(x)['taxids'] for x in ids]
