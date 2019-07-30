@@ -438,10 +438,30 @@ class Taxonomy(object):
         return cls._name_classes
 
     # class methods ====================================================
+
+    @classmethod
+    def taxid_valid(cls, taxid):
+        taxid = str(taxid)
+        cls.update(check_for_updates=cls._check_for_updates)
+        taxid_valid = False
+        if taxid in cls._taxids_child_parent_dict:
+            taxid_valid = True
+        return taxid_valid
+
+    @classmethod
+    def taxid_valid_raise(cls, taxid):
+        taxid = str(taxid)
+        cls.update(check_for_updates=cls._check_for_updates)
+        if not cls.taxid_valid(taxid):
+            message = 'TaxID: \'{t}\' is not valid.'
+            message = message.format(t=taxid)
+            raise Exception(message)
+
     @classmethod
     def taxid_deleted(cls, taxid):
         taxid = str(taxid)
         cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         taxid_deleted = False
         if taxid in cls._taxids_deleted_set:
             taxid_deleted = True
@@ -451,6 +471,7 @@ class Taxonomy(object):
     def taxid_merged(cls, taxid):
         taxid = str(taxid)
         cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         taxid_merged = False
         if taxid in cls._taxids_merged_dict:
             taxid_merged = cls._taxids_merged_dict[taxid]
@@ -460,6 +481,7 @@ class Taxonomy(object):
     def updated_taxid(cls, taxid):
         taxid = str(taxid)
         cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         return_taxid = taxid
         taxid_deleted = cls.taxid_deleted(taxid=taxid)
         taxid_merged = cls.taxid_merged(taxid=taxid)
@@ -476,6 +498,7 @@ class Taxonomy(object):
     def names_for_taxid(cls, taxid):
         taxid = str(taxid)
         cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         return_dict = dict()
         return_dict['old_taxid'] = taxid
         new_taxid = cls.updated_taxid(taxid=taxid)
@@ -490,6 +513,7 @@ class Taxonomy(object):
     @classmethod
     def scientific_name_for_taxid(cls, taxid):
         cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         names = cls.names_for_taxid(taxid)['names']
         for row in names:
             if row['name_class'] == 'scientific name':
@@ -522,11 +546,12 @@ class Taxonomy(object):
     def name_class_for_taxid(cls, taxid, name_class='scientific name'):
         taxid = str(taxid)
         cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
 
         if name_class not in NAME_CLASS_SET:
             message = 'Name class \'{n}\' is not valid.'
             message = message.format(n=name_class)
-            raise Error(message)
+            raise Exception(message)
 
         all_names_dict = cls.names_for_taxid(taxid=taxid)
 
@@ -550,6 +575,7 @@ class Taxonomy(object):
     def rank_for_taxid(cls, taxid):
         taxid = str(taxid)
         cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         return_rank = None
         taxid = cls.updated_taxid(taxid=taxid)
         if taxid in cls._taxids_rank_dict:
@@ -561,6 +587,7 @@ class Taxonomy(object):
     def parent_taxid(cls, taxid):
         taxid = str(taxid)
         cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         return_taxid = None
         taxid = cls.updated_taxid(taxid=taxid)
         if taxid in cls._taxids_child_parent_dict:
@@ -572,6 +599,7 @@ class Taxonomy(object):
     def children_taxids(cls, taxid):
         taxid = str(taxid)
         cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         return_taxids = None
         taxid = cls.updated_taxid(taxid=taxid)
         if taxid in cls._taxids_parent_children_dict:
@@ -582,6 +610,7 @@ class Taxonomy(object):
     @classmethod
     def all_descending_taxids(cls, taxid):
         cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         return_taxids = cls.children_taxids(taxid)
         if return_taxids is not None:
             for chld_txid in return_taxids:
@@ -595,6 +624,7 @@ class Taxonomy(object):
     def lineage_for_taxid(cls, taxid, name_class='scientific name'):
         taxid = str(taxid)
         cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         return_dict = dict()
         return_dict['old_taxid'] = taxid
         new_taxid = cls.updated_taxid(taxid=taxid)
@@ -632,14 +662,16 @@ class Taxonomy(object):
     def higher_rank_for_taxid(cls, taxid, rank, name_class='scientific name'):
         taxid = str(taxid)
         cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         lineage = cls.lineage_for_taxid(taxid=taxid, name_class=name_class)
         rank_index = lineage['ranks'].index(rank)
         return lineage['names'][rank_index]
 
     @classmethod
     def tax_id_for_name_and_group_tax_id(cls, name, group_tax_id):
-        cls.update(check_for_updates=cls._check_for_updates)
         group_tax_id = str(group_tax_id)
+        cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         tax_nodes = cls.taxids_for_name(name=name)['tax_ids']
         if tax_nodes is None:
             return None
@@ -693,15 +725,17 @@ class Taxonomy(object):
 
     @classmethod
     def genetic_code_for_taxid(cls, taxid):
-        cls.update(check_for_updates=cls._check_for_updates)
         taxid = str(taxid)
+        cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         gcid = cls._taxids_genetic_code_id_dict[taxid]
         return gcid
 
     @classmethod
     def mito_genetic_code_for_taxid(cls, taxid):
-        cls.update(check_for_updates=cls._check_for_updates)
         taxid = str(taxid)
+        cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         gcid = cls._taxids_mito_genetic_code_id_dict[taxid]
         return gcid
 
@@ -712,16 +746,18 @@ class Taxonomy(object):
 
     @classmethod
     def trans_table_for_tax_id(cls, taxid):
-        cls.update(check_for_updates=cls._check_for_updates)
         taxid = str(taxid)
+        cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         gcid = cls.genetic_code_for_taxid(taxid)
         tt = cls.trans_table_for_genetic_code_id(gcid)
         return tt
 
     @classmethod
     def mito_trans_table_for_tax_id(cls, taxid):
-        cls.update(check_for_updates=cls._check_for_updates)
         taxid = str(taxid)
+        cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
         gcid = cls.mito_genetic_code_for_taxid(taxid)
         tt = cls.trans_table_for_genetic_code_id(gcid)
         return tt
