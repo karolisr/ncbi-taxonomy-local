@@ -511,15 +511,6 @@ class Taxonomy(object):
         return return_dict
 
     @classmethod
-    def scientific_name_for_taxid(cls, taxid):
-        cls.update(check_for_updates=cls._check_for_updates)
-        cls.taxid_valid_raise(taxid)
-        names = cls.names_for_taxid(taxid)['names']
-        for row in names:
-            if row['name_class'] == 'scientific name':
-                return row['name']
-
-    @classmethod
     def taxids_for_name(cls, name):
         cls.update(check_for_updates=cls._check_for_updates)
 
@@ -570,6 +561,33 @@ class Taxonomy(object):
                     return_dict['name'].append(n['name'])
 
         return return_dict
+
+    @classmethod
+    def name_for_taxid(cls, taxid, name_class='scientific name'):
+        cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
+        name = cls.name_class_for_taxid(taxid, name_class)
+        name = name['name']
+        if name is not None:
+            name = name[0]
+        else:
+            name = None
+        return name
+
+    @classmethod
+    def scientific_name_for_taxid(cls, taxid):
+        name = cls.name_for_taxid(taxid, 'scientific name')
+        return name
+
+    @classmethod
+    def common_name_for_taxid(cls, taxid):
+        name = cls.name_for_taxid(taxid, 'common name')
+        return name
+
+    @classmethod
+    def genbank_common_name_for_taxid(cls, taxid):
+        name = cls.name_for_taxid(taxid, 'genbank common name')
+        return name
 
     @classmethod
     def rank_for_taxid(cls, taxid):
