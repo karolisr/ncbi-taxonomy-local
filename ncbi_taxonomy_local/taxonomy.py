@@ -444,7 +444,9 @@ class Taxonomy(object):
         taxid = str(taxid)
         cls.update(check_for_updates=cls._check_for_updates)
         taxid_valid = False
-        if taxid in cls._taxids_child_parent_dict:
+        if taxid in cls._taxids_child_parent_dict or \
+           taxid in cls._taxids_merged_dict or \
+           taxid in cls._taxids_deleted_set:
             taxid_valid = True
         return taxid_valid
 
