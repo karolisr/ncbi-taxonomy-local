@@ -684,7 +684,10 @@ class Taxonomy(object):
         cls.update(check_for_updates=cls._check_for_updates)
         cls.taxid_valid_raise(taxid)
         lineage = cls.lineage_for_taxid(taxid=taxid, name_class=name_class)
-        rank_index = lineage['ranks'].index(rank)
+        if rank in lineage['ranks']:
+            rank_index = lineage['ranks'].index(rank)
+        else:
+            return None
         return lineage['names'][rank_index]
 
     @classmethod
