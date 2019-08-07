@@ -44,9 +44,9 @@ def download_ncbi_taxonomy_data(directory_path,  # noqa
     download_file(md5_url, md5_path)
 
     md5_reported = extract_md5_hash(file_path=md5_path)
-    print('\n\t\tmd5_reported:', md5_reported)
+    # print('\n\t\tmd5_reported:', md5_reported)
     md5_actual = generate_md5_hash_for_file(file_path=archive_path)
-    print('\t\t  md5_actual:', md5_actual)
+    # print('\t\t  md5_actual:', md5_actual)
 
     if md5_reported != md5_actual:
         message = (
@@ -102,8 +102,8 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
 
                 os.remove(taxdmp_md5_path_new)
 
-                print('\n\t\ttaxdmp old_md5:', old_md5)
-                print('\t\ttaxdmp new_md5:', new_md5)
+                # print('\n\t\ttaxdmp old_md5:', old_md5)
+                # print('\t\ttaxdmp new_md5:', new_md5)
 
                 if old_md5 != new_md5:
                     download_taxdmp = True
@@ -116,8 +116,8 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
 
                 os.remove(taxcat_md5_path_new)
 
-                print('\n\t\ttaxcat old_md5:', old_md5)
-                print('\t\ttaxcat new_md5:', new_md5)
+                # print('\n\t\ttaxcat old_md5:', old_md5)
+                # print('\t\ttaxcat new_md5:', new_md5)
 
                 if old_md5 != new_md5:
                     download_taxcat = True
@@ -126,8 +126,8 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
         download_taxdmp = True
         download_taxcat = True
 
-    print('\n\t\tDownload taxdmp:', download_taxdmp)
-    print('\t\tDownload taxcat:', download_taxcat)
+    # print('\n\t\tDownload taxdmp:', download_taxdmp)
+    # print('\t\tDownload taxcat:', download_taxcat)
 
     if download_taxdmp:
         download_ncbi_taxonomy_data(
@@ -382,7 +382,7 @@ class Taxonomy(object):
         if cls._taxonomy_initialized:
             return
 
-        print('Updating NCBI taxonomy data if necessary or requested.')
+        # print('Updating NCBI taxonomy data if necessary or requested.')
 
         update_ncbi_taxonomy_data(
             taxdmp_path=cls._tax_dmp_path,
@@ -390,7 +390,7 @@ class Taxonomy(object):
             force_redownload=False,
             check_for_updates=check_for_updates)
 
-        print('\nLoading NCBI taxonomy data.')
+        # print('\nLoading NCBI taxonomy data.')
 
         cls._codons = parse_codons(
             tax_gencode_prt_path=cls._tax_gencode_prt_path)
@@ -707,10 +707,10 @@ class Taxonomy(object):
             if not group_too_broad:
                 correct_tax_node_index = lcas.index(True)
             else:
-                print('Group is too broad')
+                # print('Group is too broad')
                 return None
         else:
-            print('Organism does not belong to this group.')
+            # print('Organism does not belong to this group.')
             return None
 
         return ids[correct_tax_node_index]

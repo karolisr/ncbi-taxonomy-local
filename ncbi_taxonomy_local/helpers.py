@@ -32,7 +32,8 @@ def download_file(url, local_path):  # noqa
             try:
                 call(['wget', '-O', local_path, url])
             except Exception:
-                print("\nDownload operation failed.")
+                pass
+                # print("\nDownload operation failed.")
 
 
 def make_dir(path):  # noqa
