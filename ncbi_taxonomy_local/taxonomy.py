@@ -6,6 +6,9 @@ NCBI taxonomy databases outside of the ENTREZ system.
 
 from __future__ import print_function
 
+from functools import partial
+from itertools import dropwhile, takewhile, zip_longest
+from operator import eq, ne
 import os
 import zipfile
 
@@ -677,6 +680,33 @@ class Taxonomy(object):
         return_dict['names'] = names
 
         return return_dict
+
+    @classmethod
+    def path_between_taxids(cls, taxid1, taxid2):  # noqa
+        cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid1)
+        cls.taxid_valid_raise(taxid2)
+
+        taxid1 = int(taxid1)
+        taxid2 = int(taxid2)
+
+        if taxid1 == taxid2:
+            return (taxid1,)
+
+        taxids1 = tuple(map(int, cls.lineage_for_taxid(taxid1)['taxids']))
+        taxids2 = tuple(map(int, cls.lineage_for_taxid(taxid2)['taxids']))
+
+        shared = takewhile(lambda x: eq(x[0], x[1]), zip(taxids1, taxids2))
+        diff = dropwhile(lambda x: eq(x[0], x[1]),
+                         zip_longest(taxids1, taxids2, fillvalue=-1))
+
+        paths = tuple(zip(*diff))
+
+        path = tuple(filter(partial(ne, -1),
+                            tuple(reversed(paths[0])) +
+                            (tuple(shared)[-1][0],) + paths[1]))
+
+        return path
 
     @classmethod
     def higher_rank_for_taxid(cls, taxid, rank, name_class='scientific name'):
