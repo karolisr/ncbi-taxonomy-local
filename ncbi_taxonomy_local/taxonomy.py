@@ -7,10 +7,12 @@ NCBI taxonomy databases outside of the ENTREZ system.
 from __future__ import print_function
 
 from functools import partial
-from itertools import dropwhile, takewhile, zip_longest
+from itertools import dropwhile, takewhile
 from operator import eq, ne
 import os
 import zipfile
+
+from ncbi_taxonomy_local.py_v_diffs import zip_longest
 
 from ncbi_taxonomy_local.helpers import download_file
 from ncbi_taxonomy_local.helpers import extract_md5_hash

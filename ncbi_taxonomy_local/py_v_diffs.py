@@ -24,7 +24,9 @@ _py_v_hex, py_v_str = python_version()
 
 if _py_v_hex >= 0x03000000:
     from urllib.request import urlretrieve # noqa
+    from itertools import zip_longest # noqa
     unicode = str
 
 elif _py_v_hex < 0x03000000:
     from urllib import urlretrieve # noqa
+    from itertools import izip_longest as zip_longest # noqa
