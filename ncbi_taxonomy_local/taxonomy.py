@@ -154,7 +154,7 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
 
         os.remove(taxcat_archive_path)
 
-    return [download_taxdmp, download_taxcat]
+    return download_taxdmp, download_taxcat
 
 
 def parse_ncbi_taxonomy_dump_file(file_path):  # noqa
@@ -198,13 +198,10 @@ def parse_codons(tax_gencode_prt_path):  # noqa
 
 
 def parse_names_dump(file_path):  # noqa
-    rows = tuple(parse_ncbi_taxonomy_dump_file(file_path=file_path))
+    rows = parse_ncbi_taxonomy_dump_file(file_path=file_path)
 
-    txid_set = set(map(lambda r: r[0], rows))
-    name_set = set(map(lambda r: r[1], rows))
-
-    txid_keyed_dict = dict().fromkeys(txid_set)
-    name_keyed_dict = dict().fromkeys(name_set)
+    txid_keyed_dict = dict()
+    name_keyed_dict = dict()
 
     for r in rows:
 
@@ -213,15 +210,15 @@ def parse_names_dump(file_path):  # noqa
         unique_name = r[2]
         name_class = r[3]
 
-        txid_keyed_dict[tax_id] = {
+        txid_keyed_dict.setdefault(tax_id, []).append({
             'name': name,
             'unique_name': unique_name,
-            'name_class': name_class}
+            'name_class': name_class})
 
-        name_keyed_dict[name] = {
+        name_keyed_dict.setdefault(name, []).append({
             'tax_id': tax_id,
             'unique_name': unique_name,
-            'name_class': name_class}
+            'name_class': name_class})
 
     return {'tax_id_keyed_dict': txid_keyed_dict,
             'name_keyed_dict': name_keyed_dict}
@@ -799,6 +796,6 @@ class Taxonomy(object):
 
 def taxonomy(data_dir_path):
     if not hasattr(Taxonomy, '_taxonomy_initialized'):
-        Taxonomy.init(data_dir_path=data_dir_path, check_for_updates=False)
-        Taxonomy.update(check_for_updates=False)
+        Taxonomy.init(data_dir_path=data_dir_path, check_for_updates=True)
+        Taxonomy.update(check_for_updates=True)
     return Taxonomy
