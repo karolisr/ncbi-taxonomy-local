@@ -158,22 +158,13 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
 
 
 def parse_ncbi_taxonomy_dump_file(file_path):  # noqa
-
+    row_terminator = '\t|'
     field_terminator = '\t|\t'
-    row_terminator = '\t|\n'
-
-    f = open(file_path, 'r')
-
-    lines = list()
-
-    for line in f:
-        line = line.strip(row_terminator)
-        line = line.split(field_terminator)
-        lines.append(line)
-
-    f.close()
-
-    return lines
+    with open(file_path, 'r') as f:
+        lines = f.read().splitlines()
+    lines = map(lambda l: l.strip(row_terminator), lines)
+    ret_iter = map(lambda l: l.split(field_terminator), lines)
+    return ret_iter
 
 
 def parse_codons(tax_gencode_prt_path):  # noqa
@@ -187,16 +178,18 @@ def parse_codons(tax_gencode_prt_path):  # noqa
     base3_start = '  -- Base3  '
 
     with open(tax_gencode_prt_path, 'r') as f:
-        for line in f:
-            line = line.strip('\n')
+        lines = f.read().splitlines()
 
-            if line.startswith(base1_start):
-                base1 = line.strip(base1_start)
-            elif line.startswith(base2_start):
-                base2 = line.strip(base2_start)
-            elif line.startswith(base3_start):
-                base3 = line.strip(base3_start)
-                break
+    for line in lines:
+        line = line.strip('\n')
+
+        if line.startswith(base1_start):
+            base1 = line.strip(base1_start)
+        elif line.startswith(base2_start):
+            base2 = line.strip(base2_start)
+        elif line.startswith(base3_start):
+            base3 = line.strip(base3_start)
+            break
 
     cs = list(zip(base1, base2, base3))
     return_value = [''.join(x) for x in cs]
@@ -205,10 +198,13 @@ def parse_codons(tax_gencode_prt_path):  # noqa
 
 
 def parse_names_dump(file_path):  # noqa
+    rows = tuple(parse_ncbi_taxonomy_dump_file(file_path=file_path))
 
-    rows = parse_ncbi_taxonomy_dump_file(file_path=file_path)
-    tax_id_keyed_dict = dict()
-    name_keyed_dict = dict()
+    txid_set = set(map(lambda r: r[0], rows))
+    name_set = set(map(lambda r: r[1], rows))
+
+    txid_keyed_dict = dict().fromkeys(txid_set)
+    name_keyed_dict = dict().fromkeys(name_set)
 
     for r in rows:
 
@@ -217,62 +213,39 @@ def parse_names_dump(file_path):  # noqa
         unique_name = r[2]
         name_class = r[3]
 
-        # tax_id_keyed_dict
-        if tax_id not in tax_id_keyed_dict:
-            tax_id_keyed_dict[tax_id] = list()
-
-        tax_id_keyed_dict_entry = {
+        txid_keyed_dict[tax_id] = {
             'name': name,
             'unique_name': unique_name,
             'name_class': name_class}
 
-        tax_id_keyed_dict[tax_id].append(tax_id_keyed_dict_entry)
-
-        # name_keyed_dict
-        if name not in name_keyed_dict:
-            name_keyed_dict[name] = list()
-
-        name_keyed_dict_entry = {
+        name_keyed_dict[name] = {
             'tax_id': tax_id,
             'unique_name': unique_name,
             'name_class': name_class}
 
-        name_keyed_dict[name].append(name_keyed_dict_entry)
-
-    return {'tax_id_keyed_dict': tax_id_keyed_dict,
+    return {'tax_id_keyed_dict': txid_keyed_dict,
             'name_keyed_dict': name_keyed_dict}
 
 
 def parse_delnodes_dump(file_path):  # noqa
-
     rows = parse_ncbi_taxonomy_dump_file(file_path=file_path)
     tax_id_set = set()
-
     for r in rows:
-
-        tax_id = r[0]
-        tax_id_set.add(tax_id)
-
+        tax_id_set.add(r[0])
     return tax_id_set
 
 
 def parse_merged_dump(file_path):  # noqa
-
     rows = parse_ncbi_taxonomy_dump_file(file_path=file_path)
     new_to_old_tax_id_mapping_dict = dict()
-
     for r in rows:
-
         old_tax_id = r[0]
         new_tax_id = r[1]
-
         new_to_old_tax_id_mapping_dict[old_tax_id] = new_tax_id
-
     return new_to_old_tax_id_mapping_dict
 
 
 def parse_nodes_dump(file_path):  # noqa
-
     rows = parse_ncbi_taxonomy_dump_file(file_path=file_path)
 
     child_to_parent_tax_id_mapping_dict = dict()
@@ -826,6 +799,6 @@ class Taxonomy(object):
 
 def taxonomy(data_dir_path):
     if not hasattr(Taxonomy, '_taxonomy_initialized'):
-        Taxonomy.init(data_dir_path=data_dir_path, check_for_updates=True)
-        Taxonomy.update(check_for_updates=True)
+        Taxonomy.init(data_dir_path=data_dir_path, check_for_updates=False)
+        Taxonomy.update(check_for_updates=False)
     return Taxonomy
