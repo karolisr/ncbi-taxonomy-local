@@ -696,7 +696,7 @@ class Taxonomy(object):
     def tax_id_for_name_and_group_tax_id(cls, name, group_tax_id):
         group_tax_id = str(group_tax_id)
         cls.update(check_for_updates=cls._check_for_updates)
-        cls.taxid_valid_raise(taxid)
+        cls.taxid_valid_raise(group_tax_id)
         tax_nodes = cls.taxids_for_name(name=name)['tax_ids']
         if tax_nodes is None:
             return None
