@@ -693,6 +693,28 @@ class Taxonomy(object):
         return lineage['names'][rank_index]
 
     @classmethod
+    def shared_taxid_for_taxids(cls, taxids):
+        assert type(taxids) in (list, tuple, set)
+        cls.update(check_for_updates=cls._check_for_updates)
+        if len(taxids) == 0:
+            return None
+        shared = None
+        for taxid in taxids:
+            cls.taxid_valid_raise(taxid)
+            lineage = cls.lineage_for_taxid(taxid=taxid)['taxids']
+            if shared is None:
+                shared = set(lineage)
+            else:
+                shared = shared & set(lineage)
+
+        shared_lineage = tuple()
+        for taxid in shared:
+            lineage = cls.lineage_for_taxid(taxid=taxid)['taxids']
+            if len(lineage) > len(shared_lineage):
+                shared_lineage = lineage
+        return int(shared_lineage[-1])
+
+    @classmethod
     def tax_id_for_name_and_group_tax_id(cls, name, group_tax_id):
         group_tax_id = str(group_tax_id)
         cls.update(check_for_updates=cls._check_for_updates)
