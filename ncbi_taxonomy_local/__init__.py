@@ -10,7 +10,7 @@ y = str(date_time.year)
 __version__ = '0.0.2'
 __author__ = 'Karolis Ramanauskas'
 __author_email__ = 'kraman2@uic.edu'
-__description__ = 'Locally-cached NCBI Taxonomy Database for Python.'
+__description__ = 'Locally-cached NCBI Taxonomy Database for Python 3.'
 __copyright__ = 'Copyright \u00A9 ' + __author__ + ', ' + y
 __license__ = 'Creative Commons Attribution-ShareAlike 4.0 International ' \
               'License: cc-by-sa-4.0'
