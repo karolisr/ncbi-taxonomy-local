@@ -714,6 +714,17 @@ class Taxonomy(object):
         return int(shared_lineage[-1])
 
     @classmethod
+    def all_descending_taxids_for_taxids(cls, taxids):
+        shared = cls.shared_taxid_for_taxids(taxids)
+        if shared is None:
+            return None
+        taxids = cls.all_descending_taxids(taxid=shared)
+        if taxids is None:
+            taxids = [shared]
+        taxids = [int(x) for x in taxids]
+        return taxids
+
+    @classmethod
     def tax_id_for_name_and_group_tax_id(cls, name, group_tax_id):
         group_tax_id = str(group_tax_id)
         cls.update(check_for_updates=cls._check_for_updates)
