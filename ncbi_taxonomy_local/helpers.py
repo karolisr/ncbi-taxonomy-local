@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""
-Input/output operations.
-"""
+"""Input/output operations."""
 
 import hashlib
 import os
@@ -10,19 +8,16 @@ import os
 from subprocess import PIPE
 from subprocess import Popen
 
-from ncbi_taxonomy_local.py_v_diffs import urlretrieve
+from urllib.request import urlretrieve
 
 
 def call(cmd, stdout=PIPE, stderr=PIPE, cwd=None):  # noqa
-
     p = Popen(cmd, stdout=stdout, stderr=stderr, cwd=cwd)
     out, err = p.communicate()
-
     return out, err
 
 
 def download_file(url, local_path):  # noqa
-
     try:
         urlretrieve(url, local_path)
     except Exception:

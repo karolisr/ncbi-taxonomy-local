@@ -1,18 +1,13 @@
 # -*- coding: utf-8 -*-
 
-"""
-NCBI taxonomy databases outside of the ENTREZ system.
-"""
+"""NCBI taxonomy databases outside of the ENTREZ system."""
 
-from __future__ import print_function
-
-from functools import partial
-from itertools import dropwhile, takewhile
-from operator import eq, ne
 import os
 import zipfile
 
-from ncbi_taxonomy_local.py_v_diffs import zip_longest
+from functools import partial
+from itertools import dropwhile, takewhile, zip_longest
+from operator import eq, ne
 
 from ncbi_taxonomy_local.helpers import download_file
 from ncbi_taxonomy_local.helpers import extract_md5_hash
@@ -43,15 +38,16 @@ def download_ncbi_taxonomy_data(directory_path,  # noqa
                                 archive_url,
                                 md5_url,
                                 archive_path,
-                                md5_path):
+                                md5_path,
+                                linfo=print):
 
     download_file(archive_url, archive_path)
     download_file(md5_url, md5_path)
 
     md5_reported = extract_md5_hash(file_path=md5_path)
-    # print('\n\t\tmd5_reported:', md5_reported)
+    linfo('md5_reported: ' + md5_reported)
     md5_actual = generate_md5_hash_for_file(file_path=archive_path)
-    # print('\t\t  md5_actual:', md5_actual)
+    linfo('md5_actual: ' + md5_actual)
 
     if md5_reported != md5_actual:
         message = (
@@ -67,7 +63,8 @@ def download_ncbi_taxonomy_data(directory_path,  # noqa
 
 def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
                               force_redownload=False,
-                              check_for_updates=True):
+                              check_for_updates=True,
+                              linfo=print):
 
     download_taxdmp = False
     download_taxcat = False
@@ -107,8 +104,8 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
 
                 os.remove(taxdmp_md5_path_new)
 
-                # print('\n\t\ttaxdmp old_md5:', old_md5)
-                # print('\t\ttaxdmp new_md5:', new_md5)
+                linfo('taxdmp old_md5: ' + old_md5)
+                linfo('taxdmp new_md5: ' + new_md5)
 
                 if old_md5 != new_md5:
                     download_taxdmp = True
@@ -121,8 +118,8 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
 
                 os.remove(taxcat_md5_path_new)
 
-                # print('\n\t\ttaxcat old_md5:', old_md5)
-                # print('\t\ttaxcat new_md5:', new_md5)
+                linfo('taxcat old_md5: ' + old_md5)
+                linfo('taxcat new_md5: ' + new_md5)
 
                 if old_md5 != new_md5:
                     download_taxcat = True
@@ -131,8 +128,8 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
         download_taxdmp = True
         download_taxcat = True
 
-    # print('\n\t\tDownload taxdmp:', download_taxdmp)
-    # print('\t\tDownload taxcat:', download_taxcat)
+    linfo('Need to download taxdmp: ' + str(download_taxdmp))
+    linfo('Need to download taxcat: ' + str(download_taxcat))
 
     if download_taxdmp:
         download_ncbi_taxonomy_data(
@@ -140,7 +137,8 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
             archive_url=TAX_BASE_URL + TAXDMP_ARCHIVE,
             md5_url=taxdmp_md5_url,
             archive_path=taxdmp_archive_path,
-            md5_path=taxdmp_md5_path)
+            md5_path=taxdmp_md5_path,
+            linfo=linfo)
 
         os.remove(taxdmp_archive_path)
 
@@ -150,7 +148,8 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
             archive_url=TAX_BASE_URL + TAXCAT_ARCHIVE,
             md5_url=taxcat_md5_url,
             archive_path=taxcat_archive_path,
-            md5_path=taxcat_md5_path)
+            md5_path=taxcat_md5_path,
+            linfo=linfo)
 
         os.remove(taxcat_archive_path)
 
@@ -327,7 +326,7 @@ def parse_gencode_dump(file_path):  # noqa
 class Taxonomy(object):
 
     @classmethod
-    def init(cls, data_dir_path, check_for_updates=True,):
+    def init(cls, data_dir_path, check_for_updates=True):
 
         cls._data_dir_path = make_dir(path=os.path.expanduser(data_dir_path))
 
@@ -352,20 +351,21 @@ class Taxonomy(object):
         cls._taxonomy_initialized = False
 
     @classmethod
-    def update(cls, check_for_updates=True):
+    def update(cls, check_for_updates=True, linfo=print):
 
         if cls._taxonomy_initialized:
             return
 
-        # print('Updating NCBI taxonomy data if necessary or requested.')
+        linfo('Updating NCBI taxonomy data if necessary or requested')
 
         update_ncbi_taxonomy_data(
             taxdmp_path=cls._tax_dmp_path,
             taxcat_path=cls._tax_cat_path,
             force_redownload=False,
-            check_for_updates=check_for_updates)
+            check_for_updates=check_for_updates,
+            linfo=linfo)
 
-        # print('\nLoading NCBI taxonomy data.')
+        linfo('Loading NCBI taxonomy data')
 
         cls._codons = parse_codons(
             tax_gencode_prt_path=cls._tax_gencode_prt_path)
@@ -401,7 +401,7 @@ class Taxonomy(object):
 
         cls._taxonomy_initialized = True
 
-    # class properties =================================================
+    # class properties =======================================================
     @classmethod
     def codons(cls):
         cls.update(check_for_updates=cls._check_for_updates)
@@ -412,8 +412,7 @@ class Taxonomy(object):
         cls.update(check_for_updates=cls._check_for_updates)
         return cls._name_classes
 
-    # class methods ====================================================
-
+    # class methods ==========================================================
     @classmethod
     def taxid_valid(cls, taxid):
         taxid = str(taxid)
@@ -816,8 +815,8 @@ class Taxonomy(object):
         return tt
 
 
-def taxonomy(data_dir_path):
+def taxonomy(data_dir_path, linfo=print):
     if not hasattr(Taxonomy, '_taxonomy_initialized'):
         Taxonomy.init(data_dir_path=data_dir_path, check_for_updates=True)
-        Taxonomy.update(check_for_updates=True)
+        Taxonomy.update(check_for_updates=True, linfo=linfo)
     return Taxonomy
