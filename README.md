@@ -1,10 +1,22 @@
 # ncbi-taxonomy-local [![Build Status](https://travis-ci.com/karolisr/ncbi-taxonomy-local.svg?branch=master)](https://travis-ci.com/karolisr/ncbi-taxonomy-local)
 Locally-cached NCBI Taxonomy Database for Python 3
 
-Installation
+Installation:
+
+```bash
+pip3 install --upgrade git+https://github.com/karolisr/ncbi-taxonomy-local
+```
+
+In case this fails you may try:
 
 ```bash
 sudo -H pip3 install --upgrade git+https://github.com/karolisr/ncbi-taxonomy-local
+```
+
+or:
+
+```bash
+pip3 install --user --upgrade git+https://github.com/karolisr/ncbi-taxonomy-local
 ```
 
 Initialization:
