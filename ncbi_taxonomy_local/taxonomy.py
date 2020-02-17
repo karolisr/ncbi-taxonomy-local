@@ -750,6 +750,18 @@ class Taxonomy(object):
         return ids[correct_tax_node_index]
 
     @classmethod
+    def is_eukaryote(cls, taxid):
+        taxid = str(taxid)
+        cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
+        euk_taxid = 2759
+        shared_taxid = cls.shared_taxid_for_taxids([euk_taxid, taxid])
+        if shared_taxid == euk_taxid:
+            return True
+        else:
+            return False
+
+    @classmethod
     def trans_table_for_genetic_code_id(cls, gcid):
         cls.update(check_for_updates=cls._check_for_updates)
         gcid = str(gcid)
@@ -797,8 +809,15 @@ class Taxonomy(object):
         return gcid
 
     @classmethod
-    def plastid_genetic_code(cls):
+    def plastid_genetic_code_for_taxid(cls, taxid):
+        taxid = str(taxid)
         cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
+        # --------------------------------------------
+        # TODO: Balanophoraceae uses 32 instead of 11?
+        # Check this, NCBI taxonomy DB reports 11.
+        # https://www.ncbi.nlm.nih.gov/pubmed/30598433
+        # --------------------------------------------
         return '11'
 
     @classmethod
@@ -820,9 +839,11 @@ class Taxonomy(object):
         return tt
 
     @classmethod
-    def plastid_trans_table(cls):
+    def plastid_trans_table_for_tax_id(cls, taxid):
+        taxid = str(taxid)
         cls.update(check_for_updates=cls._check_for_updates)
-        tt = cls.trans_table_for_genetic_code_id(cls.plastid_genetic_code())
+        cls.taxid_valid_raise(taxid)
+        tt = cls.trans_table_for_genetic_code_id(cls.plastid_genetic_code(taxid))
         return tt
 
 
