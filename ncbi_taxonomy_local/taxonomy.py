@@ -762,6 +762,21 @@ class Taxonomy(object):
             return False
 
     @classmethod
+    def contains_plastid(cls, taxid):
+        taxid = str(taxid)
+        cls.update(check_for_updates=cls._check_for_updates)
+        cls.taxid_valid_raise(taxid)
+        taxids_with_plastids = [33090, 554915, 2686027, 554296, 1401294,
+                                2608240, 3027, 2611352, 33682, 38254,
+                                2608109, 2489521, 5752, 556282, 136087,
+                                2611341, 2598132, 2763, 2698737, 2683617]
+        for taxid_w_plastid in taxids_with_plastids:
+            shared_taxid = cls.shared_taxid_for_taxids([taxid_w_plastid, taxid])
+            if shared_taxid == taxid_w_plastid:
+                return True
+        return False
+
+    @classmethod
     def trans_table_for_genetic_code_id(cls, gcid):
         cls.update(check_for_updates=cls._check_for_updates)
         gcid = str(gcid)
