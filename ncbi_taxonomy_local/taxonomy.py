@@ -14,6 +14,11 @@ from ncbi_taxonomy_local.helpers import extract_md5_hash
 from ncbi_taxonomy_local.helpers import generate_md5_hash_for_file
 from ncbi_taxonomy_local.helpers import make_dir
 
+# Colors
+CONSRED = '\033[0;91m'
+CONBLUE = '\033[0;94m'
+CONSDFL = '\033[0m'
+
 TAX_BASE_URL = 'https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/'
 
 # Files expected to be in taxdmp.zip MD5 file should be first
@@ -45,14 +50,13 @@ def download_ncbi_taxonomy_data(directory_path,  # noqa
     download_file(md5_url, md5_path)
 
     md5_reported = extract_md5_hash(file_path=md5_path)
-    linfo('md5_reported: ' + md5_reported)
+    linfo('MD5 hash reported: ' + md5_reported)
     md5_actual = generate_md5_hash_for_file(file_path=archive_path)
-    linfo('md5_actual: ' + md5_actual)
+    linfo('  MD5 hash actual: ' + md5_actual)
 
     if md5_reported != md5_actual:
-        message = (
-            'MD5 hash of the file {f} does not match the reported '
-            'hash in file {r}')
+        message = (CONSRED + 'The MD5 hash for the file {f} does not match '
+                   'the reported hash in the file {r}' + CONSDFL)
         message = message.format(f=archive_path, r=md5_path)
         raise Exception(message)
     else:
@@ -104,8 +108,8 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
 
                 os.remove(taxdmp_md5_path_new)
 
-                linfo('taxdmp old_md5: ' + old_md5)
-                linfo('taxdmp new_md5: ' + new_md5)
+                linfo('Previous MD5 for the taxdmp file: ' + old_md5)
+                linfo('     New MD5 for the taxdmp file: ' + new_md5)
 
                 if old_md5 != new_md5:
                     download_taxdmp = True
@@ -118,8 +122,8 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
 
                 os.remove(taxcat_md5_path_new)
 
-                linfo('taxcat old_md5: ' + old_md5)
-                linfo('taxcat new_md5: ' + new_md5)
+                linfo('Previous MD5 for the taxcat file: ' + old_md5)
+                linfo('     New MD5 for the taxcat file: ' + new_md5)
 
                 if old_md5 != new_md5:
                     download_taxcat = True
@@ -128,8 +132,15 @@ def update_ncbi_taxonomy_data(taxdmp_path, taxcat_path,  # noqa
         download_taxdmp = True
         download_taxcat = True
 
-    linfo('Need to download taxdmp: ' + str(download_taxdmp))
-    linfo('Need to download taxcat: ' + str(download_taxcat))
+    if download_taxdmp is True:
+        linfo('Newer version of the taxdmp file was found. Will download.')
+    else:
+        linfo('The taxdmp file does not need to be updated.')
+
+    if download_taxcat is True:
+        linfo('Newer version of the taxcat file was found. Will download.')
+    else:
+        linfo('The taxcat file does not need to be updated.')
 
     if download_taxdmp:
         download_ncbi_taxonomy_data(
@@ -356,7 +367,9 @@ class Taxonomy(object):
         if cls._taxonomy_initialized:
             return
 
-        linfo('Updating NCBI taxonomy data if necessary or requested')
+        linfo(CONBLUE +
+              'Updating NCBI taxonomy data if necessary or requested' +
+              CONSDFL)
 
         update_ncbi_taxonomy_data(
             taxdmp_path=cls._tax_dmp_path,
@@ -365,7 +378,7 @@ class Taxonomy(object):
             check_for_updates=check_for_updates,
             linfo=linfo)
 
-        linfo('Loading NCBI taxonomy data')
+        linfo(CONBLUE + 'Loading NCBI taxonomy data' + CONSDFL)
 
         cls._codons = parse_codons(
             tax_gencode_prt_path=cls._tax_gencode_prt_path)
