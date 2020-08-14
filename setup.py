@@ -1,4 +1,4 @@
-import setuptools  # noqa
+import setuptools
 
 from ncbi_taxonomy_local import __author__
 from ncbi_taxonomy_local import __author_email__
@@ -19,9 +19,18 @@ setuptools.setup(
     long_description_content_type='text/markdown',
     url=__url__,
     packages=setuptools.find_packages(),
+    python_requires='>=3.7',
     classifiers=[
-        'Programming Language :: Python :: 3',
-        'License :: cc-by-sa-4.0',
-        'Operating System :: OS Independent',
+        'Development Status :: 4 - Beta',
+        'Environment :: Console',
+        'Intended Audience :: Science/Research',
+        'Natural Language :: English',
+        'Operating System :: MacOS :: MacOS X',
+        'Operating System :: POSIX :: Linux',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3 :: Only',
+        'Topic :: Scientific/Engineering :: Bio-Informatics'
     ],
 )
