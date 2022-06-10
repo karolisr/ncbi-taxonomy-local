@@ -1,4 +1,7 @@
+dist: xenial
 language: python
 python:
-  - "3.7"
-script: python tests.py
+  - "3.8"
+  - "3.9"
+script:
+  - python tests.py
