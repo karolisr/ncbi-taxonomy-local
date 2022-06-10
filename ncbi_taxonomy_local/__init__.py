@@ -7,7 +7,7 @@ from ncbi_taxonomy_local.taxonomy import Taxonomy
 date_time = datetime.now()
 y = str(date_time.year)
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 __author__ = 'Karolis Ramanauskas'
 __author_email__ = 'kraman2@uic.edu'
 __description__ = 'Locally-cached NCBI Taxonomy Database for Python 3.'
