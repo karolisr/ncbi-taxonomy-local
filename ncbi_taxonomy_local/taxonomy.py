@@ -378,6 +378,7 @@ class Taxonomy:
     @classmethod
     def init(cls, data_dir_path, logger=Log):
         if cls._taxonomy_initialized is True:
+            print('Already initialized.')
             return
         cls._data_dir_path = make_dirs(abspath(expanduser(data_dir_path)))
         cls.update(logger=logger)
@@ -392,7 +393,7 @@ class Taxonomy:
         @functools.wraps(func)
         def wrapper_func(cls, *args, **kwargs):
             if cls._taxonomy_initialized is False:
-                print('Run Taxonomy.init() first.')
+                print('Run the init(data_dir_path=\'DB_PATH\') method first.')
                 return
             value = func(cls, *args, **kwargs)
             return value
@@ -403,7 +404,7 @@ class Taxonomy:
     def update(cls, logger=Log):
 
         if cls._data_dir_path is None:
-            logger.wrn('Run Taxonomy.init() first.')
+            logger.wrn('Run the init(data_dir_path=\'DB_PATH\') method first.')
             return
 
         cls._tax_dmp_path = os.path.join(cls._data_dir_path, 'taxdmp')
