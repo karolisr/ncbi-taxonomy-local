@@ -70,10 +70,14 @@ def download_ncbi_taxonomy_data(directory_path,
     logger.msg('  MD5 hash actual:', md5_actual)
 
     if md5_reported != md5_actual:
-        message = ('The MD5 hash for the file {f} does not match '
-                   'the reported hash in the file {r}.')
-        message = message.format(f=archive_path, r=md5_path)
-        raise Exception(message)
+        # message = ('The MD5 hash for the file {f} does not match '
+        #            'the reported hash in the file {r}.')
+        # message = message.format(f=archive_path, r=md5_path)
+        message = ('The MD5 hash does not match the expected value:')
+        logger.err(message, 'retrying.')
+        download_ncbi_taxonomy_data(directory_path, archive_url, md5_url,
+                                    archive_path, md5_path, logger)
+        # raise Exception(message)
     else:
         z = zipfile.ZipFile(file=archive_path, mode='r')
         z.extractall(path=directory_path)
