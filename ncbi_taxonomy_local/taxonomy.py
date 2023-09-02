@@ -380,10 +380,14 @@ class Taxonomy:
     plastid_genetic_code = None
 
     @classmethod
-    def init(cls, data_dir_path, logger=Log):
+    def init(cls, data_dir_path=None, logger=Log):
         if cls._taxonomy_initialized is True:
             print('Already initialized.')
             return
+        if data_dir_path is None:
+            dir_usr = os.path.expanduser('~')
+            dir_dat = os.path.join(dir_usr, '.local', 'share', 'ncbi-taxonomy-local')  # XDG_DATA_HOME
+            data_dir_path = os.path.join(dir_dat, 'ncbi-taxonomy')
         cls._data_dir_path = make_dirs(abspath(expanduser(data_dir_path)))
         cls.update(logger=logger)
 
