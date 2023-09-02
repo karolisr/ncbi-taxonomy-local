@@ -9,6 +9,24 @@ from subprocess import run as subp_run, CalledProcessError, CompletedProcess
 from urllib.request import urlretrieve
 
 
+class Log:
+    @classmethod
+    def inf(cls, s=''):
+        print(s)
+
+    @classmethod
+    def msg(cls, m, s=''):
+        print(m, s)
+
+    @classmethod
+    def wrn(cls, w, s=''):
+        print(w, s)
+
+    @classmethod
+    def err(cls, e, s=''):
+        print(e, s)
+
+
 def run(cmd, in_txt=None, capture=True, cwd=None, do_not_raise=False) -> CompletedProcess[str]:
     """
     Execute a command in a subprocess.
