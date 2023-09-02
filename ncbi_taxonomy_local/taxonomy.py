@@ -350,6 +350,19 @@ def parse_gencode_dump(file_path):
     return return_value
 
 
+def initialized(func):
+    """Is the class initialized?"""
+    @classmethod
+    @functools.wraps(func)
+    def wrapper_func(cls, *args, **kwargs):
+        if cls._taxonomy_initialized is False:
+            print('Run the init() method first.')
+            return
+        value = func(cls, *args, **kwargs)
+        return value
+    return wrapper_func
+
+
 class Taxonomy:
     _data_dir_path = None
     _tax_dmp_path = None
@@ -363,21 +376,20 @@ class Taxonomy:
 
     _taxonomy_initialized = False
 
-    _taxids_child_parent_dict = None
+    _taxids_child_parent_dict = dict()
 
-    _codons = None
+    _codons = list()
     _name_classes = None
-    _taxids_merged_dict = None
-    _taxids_deleted_set = None
-    _taxids_names_dict = None
-    _names_taxids_dict = None
-    _taxids_rank_dict = None
-    _taxids_parent_children_dict = None
-    _gen_code_id_translation_table_dict = None
-    _gen_code_id_start_codons_dict = None
-    _taxids_genetic_code_id_dict = None
-    _taxids_mito_genetic_code_id_dict = None
-    plastid_genetic_code = None
+    _taxids_merged_dict = dict()
+    _taxids_deleted_set = set()
+    _taxids_names_dict = dict()
+    _names_taxids_dict = dict()
+    _taxids_rank_dict = dict()
+    _taxids_parent_children_dict = dict()
+    _gen_code_id_translation_table_dict = dict()
+    _gen_code_id_start_codons_dict = dict()
+    _taxids_genetic_code_id_dict = dict()
+    _taxids_mito_genetic_code_id_dict = dict()
 
     @classmethod
     def init(cls, data_dir_path=None, logger=Log):
@@ -394,19 +406,6 @@ class Taxonomy:
     @classmethod
     def is_initialized(cls):
         return cls._taxonomy_initialized
-
-    def initialized(func):
-        """Is the class initialized?"""
-        @classmethod
-        @functools.wraps(func)
-        def wrapper_func(cls, *args, **kwargs):
-            if cls._taxonomy_initialized is False:
-                print('Run the init(data_dir_path=\'DB_PATH\') method first.')
-                return
-            value = func(cls, *args, **kwargs)
-            return value
-
-        return wrapper_func
 
     @classmethod
     def update(cls, logger=Log):
@@ -489,14 +488,31 @@ class Taxonomy:
 
     # class methods ==========================================================
     @initialized
+    def taxid_in_db(cls, taxid):
+        taxid = str(taxid)
+        taxid_in_db = False
+        if taxid in cls._taxids_child_parent_dict or \
+                taxid in cls._taxids_merged_dict or \
+                taxid in cls._taxids_deleted_set:
+            taxid_in_db = True
+        return taxid_in_db
+
+    @initialized
     def taxid_valid(cls, taxid):
         taxid = str(taxid)
         taxid_valid = False
         if taxid in cls._taxids_child_parent_dict or \
-                taxid in cls._taxids_merged_dict or \
-                taxid in cls._taxids_deleted_set:
+                taxid in cls._taxids_merged_dict:
             taxid_valid = True
         return taxid_valid
+
+    @initialized
+    def taxid_in_db_raise(cls, taxid):
+        taxid = str(taxid)
+        if not cls.taxid_in_db(taxid):
+            message = 'TaxID: \'{t}\' is not in the database.'
+            message = message.format(t=taxid)
+            raise Exception(message)
 
     @initialized
     def taxid_valid_raise(cls, taxid):
@@ -509,7 +525,7 @@ class Taxonomy:
     @initialized
     def taxid_deleted(cls, taxid):
         taxid = str(taxid)
-        cls.taxid_valid_raise(taxid)
+        cls.taxid_in_db_raise(taxid)
         taxid_deleted = False
         if taxid in cls._taxids_deleted_set:
             taxid_deleted = True
@@ -733,8 +749,8 @@ class Taxonomy:
         paths = tuple(zip(*diff))
 
         path = tuple(filter(partial(ne, -1),
-                            tuple(reversed(paths[0])) +
-                            (tuple(shared)[-1][0],) + paths[1]))
+                            tuple(reversed(paths[0]))
+                            + (tuple(shared)[-1][0],) + paths[1]))
 
         return path
 
@@ -754,15 +770,11 @@ class Taxonomy:
         assert type(taxids) in (list, tuple, set)
         if len(taxids) == 0:
             return None
-        shared = None
-        for taxid in taxids:
+        shared = set(cls.lineage_for_taxid(taxid=taxids[0])['taxids'])
+        for taxid in taxids[1:]:
             cls.taxid_valid_raise(taxid)
             lineage = cls.lineage_for_taxid(taxid=taxid)['taxids']
-            if shared is None:
-                shared = set(lineage)
-            else:
-                shared = shared & set(lineage)
-
+            shared = shared & set(lineage)
         shared_lineage = tuple()
         for taxid in shared:
             lineage = cls.lineage_for_taxid(taxid=taxid)['taxids']
@@ -878,10 +890,15 @@ class Taxonomy:
     def plastid_genetic_code_for_taxid(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
+        if cls.contains_plastid(taxid) is False:
+            return '0'
         # --------------------------------------------
-        # ToDo: Balanophoraceae uses 32 instead of 11?
+        # Balanophoraceae uses 32 instead of 11?
         # Check this, NCBI taxonomy DB reports 11.
         # https://www.ncbi.nlm.nih.gov/pubmed/30598433
+        taxid_bala = cls.updated_taxid('25673')
+        if str(cls.shared_taxid_for_taxids([taxid_bala, taxid])) == taxid_bala:
+            return '32'
         # --------------------------------------------
         return '11'
 
@@ -905,5 +922,6 @@ class Taxonomy:
     def plastid_trans_table_for_tax_id(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
-        tt = cls.trans_table_for_genetic_code_id(cls.plastid_genetic_code(taxid))
+        tt = cls.trans_table_for_genetic_code_id(
+            cls.plastid_genetic_code_for_taxid(taxid))
         return tt
