@@ -25,6 +25,7 @@ from ncbi_taxonomy_local import Taxonomy
 #   - Slower loading time
 #   - Higher RAM usage
 tax = Taxonomy()
+# or
 tax = Taxonomy(backend='RAM')
 ```
 
