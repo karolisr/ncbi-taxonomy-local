@@ -1,20 +1,14 @@
-"""NCBI taxonomy databases outside of the ENTREZ system."""
+"""NCBI taxonomy database in RAM."""
 
-import functools
-import os
-from functools import partial
-from itertools import dropwhile
-from itertools import takewhile
-from itertools import zip_longest
-from operator import eq
-from operator import ne
-from os.path import abspath
-from os.path import expanduser
+from functools import partial, wraps
+from itertools import dropwhile, takewhile, zip_longest
+from operator import eq, ne
 
-from ncbi_taxonomy_local.misc import Log, make_dirs
-from ncbi_taxonomy_local.raw_ncbi_data_utils import (
+from .config import NAME_CLASS_SET, init_local_storage
+from .utils import Log
+from .ncbi import (
     update_ncbi_taxonomy_data,
-    parse_codons,
+    codons_from_gc_prt_file,
     parse_names_dump,
     parse_delnodes_dump,
     parse_merged_dump,
@@ -23,37 +17,8 @@ from ncbi_taxonomy_local.raw_ncbi_data_utils import (
 )
 
 
-NAME_CLASS_SET = {'acronym', 'teleomorph', 'scientific name', 'synonym',
-                  'blast name', 'misspelling', 'in-part', 'includes',
-                  'genbank acronym', 'misnomer', 'common name',
-                  'equivalent name', 'type material', 'authority',
-                  'genbank common name', 'genbank synonym', 'anamorph',
-                  'genbank anamorph'}
-
-
-def classmethod_check_initialized(func):
-    """Is the class initialized?"""
-    @classmethod
-    @functools.wraps(func)
-    def wrapper_func(cls, *args, **kwargs):
-        if cls._taxonomy_initialized is False:
-            print('Run the init() method first.')
-            return
-        value = func(cls, *args, **kwargs)
-        return value
-    return wrapper_func
-
-
-class Taxonomy:
-    _data_dir_path = None
-    _tax_dmp_path = None
-    _tax_cat_path = None
-    _tax_names_dmp_path = None
-    _tax_nodes_dmp_path = None
-    _tax_delnodes_dmp_path = None
-    _tax_merged_dmp_path = None
-    _tax_gencode_dmp_path = None
-    _tax_gencode_prt_path = None
+class TaxonomyRAM:
+    _paths = None
 
     _taxonomy_initialized = False
 
@@ -73,73 +38,56 @@ class Taxonomy:
     _taxids_mito_genetic_code_id_dict = dict()
 
     @classmethod
-    def init(cls, data_dir_path=None, logger=Log):
+    def init(cls, data_dir=None, logger=Log):
         if cls._taxonomy_initialized is True:
             print('Already initialized.')
-            return
-        if data_dir_path is None:
-            dir_usr = os.path.expanduser('~')
-            dir_dat = os.path.join(dir_usr, '.local', 'share',
-                                   'ncbi-taxonomy-local')  # XDG_DATA_HOME
-            data_dir_path = os.path.join(dir_dat, 'ncbi-taxonomy')
-        cls._data_dir_path = make_dirs(abspath(expanduser(data_dir_path)))
-        cls.update(logger=logger)
+            return None
+        if data_dir is None:
+            paths = init_local_storage()
+        else:
+            paths = init_local_storage(dir_local_storage=data_dir)
+        cls._paths = paths
+        cls._update(logger=logger)
 
     @classmethod
-    def is_initialized(cls):
+    def _is_initialized(cls):
         return cls._taxonomy_initialized
 
     @classmethod
-    def update(cls, logger=Log):
+    def _update(cls, logger=Log):
 
-        if cls._data_dir_path is None:
-            logger.wrn('Run the init(data_dir_path=\'DB_PATH\') method first.')
-            return
+        if cls._paths is None:
+            logger.wrn('Run the init() method first.')
+            return None
 
-        cls._tax_dmp_path = os.path.join(cls._data_dir_path, 'taxdmp')
-        make_dirs(path=cls._tax_dmp_path)
+        logger.inf('Updating NCBI taxonomy data.')
 
-        cls._tax_cat_path = os.path.join(cls._data_dir_path, 'taxcat')
-        make_dirs(path=cls._tax_cat_path)
-
-        cls._tax_names_dmp_path = os.path.join(cls._tax_dmp_path, 'names.dmp')
-        cls._tax_nodes_dmp_path = os.path.join(cls._tax_dmp_path, 'nodes.dmp')
-        cls._tax_delnodes_dmp_path = os.path.join(cls._tax_dmp_path, 'delnodes.dmp')
-        cls._tax_merged_dmp_path = os.path.join(cls._tax_dmp_path, 'merged.dmp')
-        cls._tax_gencode_dmp_path = os.path.join(cls._tax_dmp_path, 'gencode.dmp')
-
-        cls._tax_gencode_prt_path = os.path.join(cls._tax_dmp_path, 'gc.prt')
-
-        logger.inf('Updating NCBI taxonomy data if necessary or requested.')
-
-        download_taxdmp, download_taxcat = update_ncbi_taxonomy_data(
-            taxdmp_path=cls._tax_dmp_path,
-            taxcat_path=cls._tax_cat_path,
+        download_taxdmp = update_ncbi_taxonomy_data(
+            taxdmp_path=cls._paths['dir_taxdmp'],
             force_redownload=False,
             check_for_updates=True,
             logger=logger)
 
-        if download_taxdmp is False and download_taxcat is False:
+        if download_taxdmp is False:
             if cls._taxonomy_initialized:
-                return
+                return None
 
         logger.msg('Loading NCBI taxonomy data.')
 
-        cls._codons = parse_codons(
-            tax_gencode_prt_path=cls._tax_gencode_prt_path)
+        cls._codons = codons_from_gc_prt_file(cls._paths['file_gc'])
 
-        cls._tax_dict = parse_names_dump(file_path=cls._tax_names_dmp_path)
+        cls._tax_dict = parse_names_dump(file_path=cls._paths['file_names'])
         cls._taxids_names_dict = cls._tax_dict['tax_id_keyed_dict']
         cls._names_taxids_dict = cls._tax_dict['name_keyed_dict']
 
         cls._taxids_deleted_set = parse_delnodes_dump(
-            file_path=cls._tax_delnodes_dmp_path)
+            file_path=cls._paths['file_delnodes'])
 
         cls._taxids_merged_dict = parse_merged_dump(
-            file_path=cls._tax_merged_dmp_path)
+            file_path=cls._paths['file_merged'])
 
         parse_nodes_dump_result = parse_nodes_dump(
-            file_path=cls._tax_nodes_dmp_path)
+            file_path=cls._paths['file_nodes'])
 
         cls._taxids_parent_children_dict = parse_nodes_dump_result[0]
         cls._taxids_child_parent_dict = parse_nodes_dump_result[1]
@@ -148,7 +96,7 @@ class Taxonomy:
         cls._taxids_mito_genetic_code_id_dict = parse_nodes_dump_result[4]
 
         parse_gencode_dump_result = parse_gencode_dump(
-            file_path=cls._tax_gencode_dmp_path)
+            file_path=cls._paths['file_gencode'])
 
         cls._gen_code_id_name_dict = parse_gencode_dump_result[0]
         cls._gen_code_id_translation_table_dict = parse_gencode_dump_result[1]
@@ -159,17 +107,30 @@ class Taxonomy:
 
         cls._taxonomy_initialized = True
 
+    @staticmethod
+    def _classmethod_check_initialized(func):
+        """Is the class initialized?"""
+        @classmethod
+        @wraps(func)
+        def wrapper_func(cls, *args, **kwargs):
+            if cls._taxonomy_initialized is False:
+                print('Run the init() method first.')
+                return
+            value = func(cls, *args, **kwargs)
+            return value
+        return wrapper_func
+
     # class properties =======================================================
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def codons(cls):
         return cls._codons
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def name_classes(cls):
         return cls._name_classes
 
     # class methods ==========================================================
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def taxid_in_db(cls, taxid):
         taxid = str(taxid)
         taxid_in_db = False
@@ -179,7 +140,7 @@ class Taxonomy:
             taxid_in_db = True
         return taxid_in_db
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def taxid_valid(cls, taxid):
         taxid = str(taxid)
         taxid_valid = False
@@ -188,7 +149,7 @@ class Taxonomy:
             taxid_valid = True
         return taxid_valid
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def taxid_in_db_raise(cls, taxid):
         taxid = str(taxid)
         if not cls.taxid_in_db(taxid):
@@ -196,7 +157,7 @@ class Taxonomy:
             message = message.format(t=taxid)
             raise Exception(message)
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def taxid_valid_raise(cls, taxid):
         taxid = str(taxid)
         if not cls.taxid_valid(taxid):
@@ -204,7 +165,7 @@ class Taxonomy:
             message = message.format(t=taxid)
             raise Exception(message)
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def taxid_deleted(cls, taxid):
         taxid = str(taxid)
         cls.taxid_in_db_raise(taxid)
@@ -213,7 +174,7 @@ class Taxonomy:
             taxid_deleted = True
         return taxid_deleted
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def taxid_merged(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
@@ -222,7 +183,7 @@ class Taxonomy:
             taxid_merged = cls._taxids_merged_dict[taxid]
         return taxid_merged
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def updated_taxid(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
@@ -238,7 +199,7 @@ class Taxonomy:
 
         return return_taxid
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def names_for_taxid(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
@@ -253,7 +214,7 @@ class Taxonomy:
 
         return return_dict
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def taxids_for_name(cls, name):
         return_dict = dict()
 
@@ -274,7 +235,7 @@ class Taxonomy:
 
         return return_dict
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def name_class_for_taxid(cls, taxid, name_class='scientific name'):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
@@ -302,7 +263,7 @@ class Taxonomy:
 
         return return_dict
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def name_for_taxid(cls, taxid, name_class='scientific name'):
         cls.taxid_valid_raise(taxid)
         name = cls.name_class_for_taxid(taxid, name_class)
@@ -313,22 +274,22 @@ class Taxonomy:
             name = None
         return name
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def scientific_name_for_taxid(cls, taxid):
         name = cls.name_for_taxid(taxid, 'scientific name')
         return name
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def common_name_for_taxid(cls, taxid):
         name = cls.name_for_taxid(taxid, 'common name')
         return name
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def genbank_common_name_for_taxid(cls, taxid):
         name = cls.name_for_taxid(taxid, 'genbank common name')
         return name
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def rank_for_taxid(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
@@ -336,10 +297,9 @@ class Taxonomy:
         taxid = cls.updated_taxid(taxid=taxid)
         if taxid in cls._taxids_rank_dict:
             return_rank = cls._taxids_rank_dict[taxid]
-
         return return_rank
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def parent_taxid(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
@@ -347,10 +307,9 @@ class Taxonomy:
         taxid = cls.updated_taxid(taxid=taxid)
         if taxid in cls._taxids_child_parent_dict:
             return_taxid = cls._taxids_child_parent_dict[taxid]
-
         return return_taxid
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def children_taxids(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
@@ -358,10 +317,9 @@ class Taxonomy:
         taxid = cls.updated_taxid(taxid=taxid)
         if taxid in cls._taxids_parent_children_dict:
             return_taxids = cls._taxids_parent_children_dict[taxid]
-
         return return_taxids
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def all_descending_taxids(cls, taxid):
         cls.taxid_valid_raise(taxid)
         return_taxids = cls.children_taxids(taxid)
@@ -370,10 +328,9 @@ class Taxonomy:
                 rabbit_hole = cls.all_descending_taxids(chld_txid)
                 if rabbit_hole is not None:
                     return_taxids = return_taxids + rabbit_hole
-
         return return_taxids
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def lineage_for_taxid(cls, taxid, name_class='scientific name'):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
@@ -410,7 +367,7 @@ class Taxonomy:
 
         return return_dict
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def path_between_taxids(cls, taxid1, taxid2):
         cls.taxid_valid_raise(taxid1)
         cls.taxid_valid_raise(taxid2)
@@ -433,10 +390,9 @@ class Taxonomy:
         path = tuple(filter(partial(ne, -1),
                             tuple(reversed(paths[0]))
                             + (tuple(shared)[-1][0],) + paths[1]))
-
         return path
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def higher_rank_for_taxid(cls, taxid, rank, name_class='scientific name'):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
@@ -447,7 +403,7 @@ class Taxonomy:
             return None
         return lineage['names'][rank_index]
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def shared_taxid_for_taxids(cls, taxids):
         assert type(taxids) in (list, tuple, set)
         if len(taxids) == 0:
@@ -464,7 +420,7 @@ class Taxonomy:
                 shared_lineage = lineage
         return int(shared_lineage[-1])
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def all_descending_taxids_for_taxids(cls, taxids):
         shared = cls.shared_taxid_for_taxids(taxids)
         if shared is None:
@@ -475,7 +431,7 @@ class Taxonomy:
         taxids = [int(x) for x in taxids]
         return taxids
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def tax_id_for_name_and_group_tax_id(cls, name, group_tax_id):
         group_tax_id = str(group_tax_id)
         cls.taxid_valid_raise(group_tax_id)
@@ -499,7 +455,7 @@ class Taxonomy:
 
         return ids[correct_tax_node_index]
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def is_eukaryote(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
@@ -510,7 +466,7 @@ class Taxonomy:
         else:
             return False
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def contains_plastid(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
@@ -524,7 +480,7 @@ class Taxonomy:
                 return True
         return False
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def trans_table_for_genetic_code_id(cls, gcid):
         gcid = str(gcid)
 
@@ -551,24 +507,23 @@ class Taxonomy:
         ret_val = {'trans_table': tbl,
                    'start_codons': start_codons,
                    'stop_codons': stop_codons}
-
         return ret_val
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def genetic_code_for_taxid(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
         gcid = cls._taxids_genetic_code_id_dict[taxid]
         return gcid
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def mito_genetic_code_for_taxid(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
         gcid = cls._taxids_mito_genetic_code_id_dict[taxid]
         return gcid
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def plastid_genetic_code_for_taxid(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
@@ -584,7 +539,7 @@ class Taxonomy:
         # --------------------------------------------
         return '11'
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def trans_table_for_tax_id(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
@@ -592,7 +547,7 @@ class Taxonomy:
         tt = cls.trans_table_for_genetic_code_id(gcid)
         return tt
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def mito_trans_table_for_tax_id(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)
@@ -600,7 +555,7 @@ class Taxonomy:
         tt = cls.trans_table_for_genetic_code_id(gcid)
         return tt
 
-    @classmethod_check_initialized
+    @_classmethod_check_initialized
     def plastid_trans_table_for_tax_id(cls, taxid):
         taxid = str(taxid)
         cls.taxid_valid_raise(taxid)

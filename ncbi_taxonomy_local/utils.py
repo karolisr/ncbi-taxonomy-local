@@ -1,6 +1,8 @@
 """Miscellaneous helper functions."""
 
-import hashlib
+from hashlib import md5
+from zipfile import ZipFile
+
 from os import makedirs
 from os.path import abspath
 from os.path import exists as ope
@@ -10,21 +12,36 @@ from urllib.request import urlretrieve
 
 
 class Log:
+    _verbosity: int = 1
+
+    @classmethod
+    def get_verbosity(cls):
+        return cls._verbosity
+
+    @classmethod
+    def set_verbosity(cls, value):
+        if value in range(0, 5):
+            cls._verbosity = value
+
     @classmethod
     def inf(cls, s=''):
-        print(s)
+        if cls._verbosity > 0:
+            print(s)
 
     @classmethod
     def msg(cls, m, s=''):
-        print(m, s)
+        if cls._verbosity > 0:
+            print(m, s)
 
     @classmethod
     def wrn(cls, w, s=''):
-        print(w, s)
+        if cls._verbosity > 0:
+            print(w, s)
 
     @classmethod
     def err(cls, e, s=''):
-        print(e, s)
+        if cls._verbosity > 0:
+            print(e, s)
 
 
 def run(cmd, in_txt=None, capture=True, cwd=None, do_not_raise=False) -> CompletedProcess[str]:
@@ -106,7 +123,7 @@ def generate_md5_hash_for_file(file_path):
     Returns:
     str: The MD5 hash of the file content.
     """
-    md5_hash = hashlib.md5()
+    md5_hash = md5()
     try:
         with open(file_path, 'rb') as f:
             for chunk in iter(lambda: f.read(4096), b""):
@@ -137,3 +154,25 @@ def extract_md5_hash(file_path):
     except IOError as e:
         print(f"Error opening or reading file: {e}")
     return ""
+
+
+def dnld_zip_check_md5_then_extract(directory_path,
+                                    zip_url, md5_url,
+                                    zip_path, md5_path, logger=Log):
+
+    download_file(zip_url, zip_path)
+    download_file(md5_url, md5_path)
+
+    md5_reported = extract_md5_hash(file_path=md5_path)
+    logger.msg('MD5 hash reported:', md5_reported)
+    md5_actual = generate_md5_hash_for_file(file_path=zip_path)
+    logger.msg('  MD5 hash actual:', md5_actual)
+
+    if md5_reported != md5_actual:
+        logger.err('The MD5 hash does not match the expected value:',
+                   'retrying.')
+        dnld_zip_check_md5_then_extract(directory_path, zip_url, md5_url,
+                                        zip_path, md5_path, logger)
+    else:
+        z = ZipFile(file=zip_path, mode='r')
+        z.extractall(path=directory_path)

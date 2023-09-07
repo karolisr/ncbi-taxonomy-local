@@ -4,9 +4,9 @@
 
 from pprint import pprint
 
-from ncbi_taxonomy_local import Taxonomy
-tax = Taxonomy()
-tax.init(data_dir_path='NCBI_TAXONOMY')
+from ncbi_taxonomy_local import TaxonomyRAM
+tax = TaxonomyRAM()
+tax.init(data_dir='NCBI_TAXONOMY')
 
 pprint(tax.taxids_for_name('Solanum'))
 pprint(tax.taxids_for_name('Solanum chilense'))

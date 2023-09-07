@@ -13,18 +13,27 @@ or:
 pip3 install --upgrade git+https://github.com/karolisr/ncbi-taxonomy-local
 ```
 
-In case the above commands fail, you may try:
-
-```bash
-sudo -H pip3 install --upgrade git+https://github.com/karolisr/ncbi-taxonomy-local
-```
-
 Initialization:
 
 ```python
 from ncbi_taxonomy_local import Taxonomy
+```
+
+```python
+# Load entire database into RAM.
+#   - Faster queries
+#   - Slower loading time
+#   - Higher RAM usage
 tax = Taxonomy()
-tax.init('~/NCBI_TAXONOMY_DB')  # a path to a directory where the database will be stored.
+tax = Taxonomy(backend='RAM')
+```
+
+```python
+# Use the SQLite backend:
+#   - Slightly slower queries
+#   - Instant loading time
+#   - Lower RAM usage
+tax = Taxonomy(backend='SQL')
 ```
 
 Usage Examples:
