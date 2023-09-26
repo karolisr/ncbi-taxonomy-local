@@ -1,9 +1,10 @@
 import os
+from shutil import move
 
 from os.path import join as opj
 from .utils import Log
-from .utils import (download_file, extract_md5_hash,
-                    dnld_zip_check_md5_then_extract)
+from .utils import (download_file, extract_md5_hash, make_dirs,
+                    dnld_zip_check_md5_then_extract, diff_files)
 
 
 TAX_BASE_URL = 'https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/'
@@ -52,6 +53,10 @@ def update_ncbi_taxonomy_data(taxdmp_path, force_redownload=False,
                     download_taxdmp = True
 
     if download_taxdmp is True:
+        if os.path.exists(taxdmp_md5_path):
+            logger.wrn('Backing up existing taxdmp directory.')
+            move(taxdmp_path, f'{taxdmp_path}.bak')
+            make_dirs(taxdmp_path)
         logger.wrn('Downloading taxdmp file from NCBI.')
         dnld_zip_check_md5_then_extract(
             directory_path=taxdmp_path,
@@ -65,7 +70,7 @@ def update_ncbi_taxonomy_data(taxdmp_path, force_redownload=False,
     return download_taxdmp
 
 
-def rows_from_dmp_file(file_path):
+def rows_from_dmp_lines(lines: list[str]):
     # From the NCBI readme file:
     #   *.dmp files are bcp-like dump from GenBank taxonomy database.
     #   Field terminator is "\t|\t"
@@ -74,11 +79,14 @@ def rows_from_dmp_file(file_path):
     row_trm = '|'
     fld_trm = '\t|'
 
+    ls = map(lambda l: l.strip(row_trm), lines)
+    return map(lambda l: tuple(map(lambda f: f.strip(), l.split(fld_trm))), ls)
+
+
+def rows_from_dmp_file(file_path):
     with open(file_path, 'r') as f:
         ls = f.read().splitlines()
-
-    ls = map(lambda l: l.strip(row_trm), ls)
-    return map(lambda l: tuple(map(lambda f: f.strip(), l.split(fld_trm))), ls)
+    return rows_from_dmp_lines(ls)
 
 
 def codons_from_gc_prt_file(file_path):
@@ -229,3 +237,16 @@ def parse_gencode_dump(file_path):
         genetic_code_id_to_start_codons_dict]
 
     return return_value
+
+
+def diff_dmp_files(old, new):
+
+    drop_lines, add_lines = diff_files(old, new)
+
+    with open('drop_lines.dmp', 'w') as dlf:
+        dlf.writelines(drop_lines)
+
+    with open('add_lines.dmp', 'w') as alf:
+        alf.writelines(add_lines)
+
+    list(rows_from_dmp_file('drop_lines.dmp'))

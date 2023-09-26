@@ -1,5 +1,7 @@
+import contextlib
+import sqlalchemy.exc
 from os.path import join as opj
-from sqlalchemy import Engine, create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 from .utils import Log, make_dirs
 from .ncbi import TAXDMP_FILES, update_ncbi_taxonomy_data
@@ -11,12 +13,26 @@ from .populate_sql import (
     populate_merged_nodes_table, populate_names_table, populate_nodes_table)
 
 
-NAME_CLASS_SET = {'acronym', 'teleomorph', 'scientific name', 'synonym',
-                  'blast name', 'misspelling', 'in-part', 'includes',
-                  'genbank acronym', 'misnomer', 'common name',
-                  'equivalent name', 'type material', 'authority',
-                  'genbank common name', 'genbank synonym', 'anamorph',
-                  'genbank anamorph'}
+NAME_CLASS_SET = {
+    'acronym',
+    'anamorph',
+    'authority',
+    'blast name',
+    'common name',
+    'equivalent name',
+    'genbank acronym',
+    'genbank anamorph',
+    'genbank common name',
+    'genbank synonym',
+    'in-part',
+    'includes',
+    'misnomer',
+    'misspelling',
+    'scientific name',
+    'synonym',
+    'teleomorph',
+    'type material',
+}
 
 
 DIR_BASE = opj('~', '.local', 'share', 'ncbi-taxonomy-local')
@@ -70,31 +86,96 @@ def init_local_storage(dir_local_storage=DIR_BASE, force_redownload=False,
     return paths
 
 
-def init_db(paths: dict[str, str]):
+PG_TERMINATE_CONNS = """
+-- Terminate any existing connections to this database
+SELECT
+    pg_terminate_backend(pg_stat_activity.pid)
+FROM
+    pg_stat_activity
+WHERE
+    pg_stat_activity.datname = 'taxonomy'
+    AND pid <> pg_backend_pid();
+"""
+
+
+def init_db(paths: dict[str, str], echo: bool = False):
+
     file_db = paths['file_db']
-    engine = create_engine(f'sqlite:///{file_db}')
-    BaseSQLModel.metadata.create_all(engine)
+
+    # ------------------------------------------------------------------------
+    engine = create_engine(f'sqlite:///{file_db}', echo=echo)
+    # engine = create_engine('postgresql+psycopg2://user:password@localhost/taxonomy', echo=echo)
+    # ------------------------------------------------------------------------
+
+    # ------------------------------------------------------------------------
+    # engine = create_engine('postgresql+psycopg2://localhost/postgres', echo=echo)
+    # with contextlib.suppress(sqlalchemy.exc.ProgrammingError):
+    #     with engine.connect() as conn:
+    #         conn.execute(text('commit'))
+    #         conn.execute(text(PG_TERMINATE_CONNS))
+    #         conn.execute(text('commit'))
+    #         conn.execute(text('DROP DATABASE taxonomy'))
+    #         conn.execute(text('commit'))
+    #         conn.execute(text('CREATE DATABASE taxonomy'))
+
+    # with contextlib.suppress(sqlalchemy.exc.ProgrammingError):
+    #     with engine.connect() as conn:
+    #         conn.execute(text('commit'))
+    #         conn.execute(text('CREATE DATABASE taxonomy'))
+    # ------------------------------------------------------------------------
+
+    # engine = create_engine('postgresql+psycopg2://localhost/taxonomy', echo=echo)
+    BaseSQLModel.metadata.create_all(bind=engine, checkfirst=True)
     Session = sessionmaker(engine)
     return Session
 
 
-def populate_db(paths: dict[str, str], session: Session):
-    file_citations = paths['file_citations']
-    file_delnodes = paths['file_delnodes']
+def populate_db(paths: dict[str, str], session: Session, logger=Log):
+
     file_division = paths['file_division']
     file_gc = paths['file_gc']
     file_gencode = paths['file_gencode']
-    file_images = paths['file_images']
+    file_delnodes = paths['file_delnodes']
+    file_nodes = paths['file_nodes']
     file_merged = paths['file_merged']
     file_names = paths['file_names']
-    file_nodes = paths['file_nodes']
+    file_citations = paths['file_citations']
+    file_images = paths['file_images']
 
-    populate_citations_table(file_citations, session)
-    populate_deleted_nodes_table(file_delnodes, session)
+    msg = 'Populating table:'
+
+    Log.wrn(msg, 'divisions')
+    # 1
     populate_divisions_table(file_division, session)
+
+    Log.wrn(msg, 'codons')
+    # 2
     populate_codons_table(file_gc, session)
+
+    Log.wrn(msg, 'genetic_codes')
+    # 3
     populate_genetic_codes_table(file_gencode, session)
-    populate_images_table(file_images, session)
-    populate_merged_nodes_table(file_merged, session)
-    populate_names_table(file_names, session)
+
+    Log.wrn(msg, 'deleted_nodes')
+    # 4
+    populate_deleted_nodes_table(file_delnodes, session)
+
+    Log.wrn(msg, 'nodes')
+    # 5
     populate_nodes_table(file_nodes, session)
+
+    Log.wrn(msg, 'merged_nodes')
+    # 6
+    populate_merged_nodes_table(file_merged, session)
+
+    Log.wrn(msg, 'names')
+    # 7
+    populate_names_table(file_names, session)
+
+    Log.wrn(msg, 'citations')
+    # 8
+    populate_citations_table(file_citations, session)
+
+    Log.wrn(msg, 'images')
+    # 9
+    populate_images_table(file_images, session)

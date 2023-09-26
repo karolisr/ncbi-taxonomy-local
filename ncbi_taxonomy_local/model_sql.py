@@ -19,11 +19,11 @@ assoc_table_nodes_images = Table(
     Column('img_id', ForeignKey('images.id'), primary_key=True))
 
 
-class Node(BaseSQLModel):
+class NCBINode(BaseSQLModel):
     __tablename__ = 'nodes'
 
     tax_id: Mapped[int] = mapped_column(primary_key=True)
-    parent_tax_id: Mapped[int] = mapped_column(ForeignKey('nodes.tax_id'))
+    parent_tax_id: Mapped[Optional[int]] = mapped_column(ForeignKey('nodes.tax_id'), index=True)
     rank: Mapped[str]
     embl_code: Mapped[Optional[str]]
     division_id: Mapped[int] = mapped_column(ForeignKey('divisions.id'))
@@ -43,12 +43,12 @@ class Node(BaseSQLModel):
     comments: Mapped[Optional[str]]
 
     children = relationship(
-        'Node', back_populates='parent')
+        'NCBINode', back_populates='parent')
 
     parent = relationship(
-        'Node', back_populates='children', remote_side=[tax_id])
+        'NCBINode', back_populates='children', remote_side=[tax_id])
 
-    names = relationship('Name')
+    names = relationship('NCBIName')
 
     division = relationship('Division', back_populates='nodes')
 
@@ -61,23 +61,22 @@ class Node(BaseSQLModel):
         back_populates='nodes')
 
     def __repr__(self) -> str:
-        return f'Node(tax_id={self.tax_id!r}, ' \
+        return f'NCBINode(tax_id={self.tax_id!r}, ' \
             + f'parent_tax_id={self.parent_tax_id!r}, rank={self.rank!r}, ' \
             + f'genetic_code_id={self.genetic_code_id!r})'
 
 
-class Name(BaseSQLModel):
+class NCBIName(BaseSQLModel):
     __tablename__ = 'names'
-
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    tax_id: Mapped[int] = mapped_column(ForeignKey('nodes.tax_id'))
-    name: Mapped[str]
+    tax_id: Mapped[int] = mapped_column(ForeignKey('nodes.tax_id'), index=True)
+    name: Mapped[str] = mapped_column(index=True)
     unique_name: Mapped[Optional[str]]
-    name_class: Mapped[str]
+    name_class: Mapped[str] = mapped_column(index=True)
 
     def __repr__(self) -> str:
-        return f'Name(tax_id={self.tax_id!r}, name={self.name!r}, ' \
+        return f'NCBIName(tax_id={self.tax_id!r}, name={self.name!r}, ' \
             + f'unique_name={self.unique_name!r}, ' \
             + f'name_class={self.name_class!r})'
 
@@ -90,7 +89,7 @@ class Division(BaseSQLModel):
     name: Mapped[str]
     comments: Mapped[Optional[str]]
 
-    nodes = relationship('Node')
+    nodes = relationship('NCBINode')
 
     def __repr__(self) -> str:
         return f'Division(id={self.id!r}, code={self.code!r}, ' \
@@ -110,23 +109,23 @@ class GeneticCode(BaseSQLModel):
         return f'GeneticCode(id={self.id!r}, name={self.name!r})'
 
 
-class DeletedNode(BaseSQLModel):
+class NCBIDeletedNode(BaseSQLModel):
     __tablename__ = 'deleted_nodes'
 
     tax_id: Mapped[int] = mapped_column(primary_key=True)
 
     def __repr__(self) -> str:
-        return f'DeletedNode(tax_id={self.tax_id!r})'
+        return f'NCBIDeletedNode(tax_id={self.tax_id!r})'
 
 
-class MergedNode(BaseSQLModel):
+class NCBIMergedNode(BaseSQLModel):
     __tablename__ = 'merged_nodes'
 
     old_tax_id: Mapped[int] = mapped_column(primary_key=True)
     new_tax_id: Mapped[int] = mapped_column(ForeignKey('nodes.tax_id'))
 
     def __repr__(self) -> str:
-        return f'MergedNode(old_tax_id={self.old_tax_id!r}, ' \
+        return f'NCBIMergedNode(old_tax_id={self.old_tax_id!r}, ' \
             + f'new_tax_id={self.new_tax_id!r})'
 
 
@@ -134,37 +133,37 @@ class Citation(BaseSQLModel):
     __tablename__ = 'citations'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    key: Mapped[Optional[str]]
+    citation_key: Mapped[Optional[str]]
     # pubmed_id: Mapped[Optional[str]]
     medline_id: Mapped[Optional[str]]
     url: Mapped[Optional[str]]
     text: Mapped[Optional[str]]
 
-    nodes: Mapped[List[Node]] = relationship(
+    nodes: Mapped[List[NCBINode]] = relationship(
         secondary=assoc_table_nodes_citations,
         back_populates='citations')
 
     def __repr__(self) -> str:
-        return f'Citation(id={self.id!r}, key={self.key!r})'
+        return f'Citation(id={self.id!r}, key={self.citation_key!r})'
 
 
 class Image(BaseSQLModel):
     __tablename__ = 'images'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    key: Mapped[str]
+    image_key: Mapped[str]
     url: Mapped[str]
     license: Mapped[str]
     attribution: Mapped[Optional[str]]
     source: Mapped[str]
     # properties: Mapped[Optional[str]]
 
-    nodes: Mapped[List[Node]] = relationship(
+    nodes: Mapped[List[NCBINode]] = relationship(
         secondary=assoc_table_nodes_images,
         back_populates='images')
 
     def __repr__(self) -> str:
-        return f'Image(id={self.id!r}, key={self.key!r})'
+        return f'Image(id={self.id!r}, key={self.image_key!r})'
 
 
 class Codon(BaseSQLModel):

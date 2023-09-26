@@ -9,6 +9,7 @@ from os.path import exists as ope
 from os.path import expanduser
 from subprocess import run as subp_run, CalledProcessError, CompletedProcess
 from urllib.request import urlretrieve
+from difflib import unified_diff
 
 
 class Log:
@@ -176,3 +177,27 @@ def dnld_zip_check_md5_then_extract(directory_path,
     else:
         z = ZipFile(file=zip_path, mode='r')
         z.extractall(path=directory_path)
+
+
+def diff_files(old, new):
+
+    with open(old) as of:
+        old_lines = of.readlines()
+    with open(new) as nf:
+        new_lines = nf.readlines()
+
+    diff_lines = unified_diff(old_lines, new_lines, n=0)
+
+    drop_lines = []
+    add_lines = []
+
+    _ = next(diff_lines)
+    _ = next(diff_lines)
+
+    for dl in diff_lines:
+        if dl.startswith('-'):
+            drop_lines.append(dl[1:-1])
+        elif dl.startswith('+'):
+            add_lines.append(dl[1:-1])
+
+    return drop_lines, add_lines

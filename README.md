@@ -20,21 +20,21 @@ from ncbi_taxonomy_local import Taxonomy
 ```
 
 ```python
-# Load entire database into RAM.
-#   - Faster queries
-#   - Slower loading time
-#   - Higher RAM usage
-tax = Taxonomy()
-# or
-tax = Taxonomy(backend='RAM')
-```
-
-```python
 # Use the SQLite backend:
 #   - Slightly slower queries
 #   - Instant loading time
 #   - Lower RAM usage
+tax = Taxonomy()
+# or
 tax = Taxonomy(backend='SQL')
+```
+
+```python
+# Load entire database into RAM.
+#   - Faster queries
+#   - Slower loading time
+#   - Higher RAM usage
+tax = Taxonomy(backend='RAM')
 ```
 
 Usage Examples:

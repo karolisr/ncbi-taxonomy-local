@@ -24,15 +24,13 @@ class Taxonomy(object):
     Taxonomy.
     """
 
-    def __new__(cls, backend='RAM', data_dir=None, logger=Log):
+    def __new__(cls, backend='SQL', data_dir=None, logger=Log):
         backend = backend.upper()
         if backend in ('RAM', 'SQL'):
             if backend == 'RAM':
-                TaxonomyRAM.init(data_dir=data_dir, logger=logger)
-                return TaxonomyRAM
+                return TaxonomyRAM(data_dir=data_dir, logger=logger)
             elif backend == 'SQL':
-                TaxonomySQL.init(data_dir=data_dir, logger=logger)
-                return TaxonomySQL
+                return TaxonomySQL(data_dir=data_dir, logger=logger)
         else:
             raise Exception(f'Invalid backend type: {backend}')
 
