@@ -4,3 +4,7 @@ class TaxIdInvalidError(Exception):
 
 class TaxIdNotInDBError(Exception):
     pass
+
+
+class NameClassInvalidError(Exception):
+    pass

@@ -1,9 +1,10 @@
-from sqlalchemy.orm import Session
 from sqlalchemy import insert, update
+from sqlalchemy.orm import Session
+
+from .model_sql import (Citation, Codon, DeletedNode, Division, GeneticCode,
+                        Image, MergedNode, Name, Node,
+                        assoc_table_nodes_citations, assoc_table_nodes_images)
 from .ncbi import codons_from_gc_prt_file, rows_from_dmp_file
-from .model_sql import (
-    NCBINode, NCBIName, Division, GeneticCode, NCBIDeletedNode, NCBIMergedNode, Codon,
-    Citation, Image, assoc_table_nodes_citations, assoc_table_nodes_images)
 
 
 def populate_nodes_table(dmp_file_path, session: Session):
@@ -23,6 +24,7 @@ def populate_nodes_table(dmp_file_path, session: Session):
         nd = {
             'tax_id': int(r[0]),
             # 'parent_tax_id': int(r[1]),
+            'parent_tax_id': 1,
             'rank': r[2],
             'embl_code': embl_code,
             'division_id': int(r[4]),
@@ -38,7 +40,7 @@ def populate_nodes_table(dmp_file_path, session: Session):
         table_rows.append(nd)
 
     session.execute(
-        insert(NCBINode),
+        insert(Node),
         table_rows
     )
 
@@ -54,7 +56,7 @@ def populate_nodes_table(dmp_file_path, session: Session):
         table_rows.append(nd)
 
     session.execute(
-        update(NCBINode),
+        update(Node),
         table_rows
     )
 
@@ -77,7 +79,7 @@ def populate_names_table(dmp_file_path, session: Session):
         table_rows.append(nm)
 
     session.execute(
-        insert(NCBIName),
+        insert(Name),
         table_rows
     )
 
@@ -139,7 +141,7 @@ def populate_deleted_nodes_table(dmp_file_path, session: Session):
         table_rows.append({'tax_id': r[0]})
 
     session.execute(
-        insert(NCBIDeletedNode),
+        insert(DeletedNode),
         table_rows
     )
 
@@ -157,7 +159,7 @@ def populate_merged_nodes_table(dmp_file_path, session: Session):
         table_rows.append(mn)
 
     session.execute(
-        insert(NCBIMergedNode),
+        insert(MergedNode),
         table_rows
     )
 

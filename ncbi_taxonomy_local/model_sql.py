@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 from typing import List, Optional
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
 from sqlalchemy import Column, ForeignKey, String, Table
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class BaseSQLModel(DeclarativeBase):
@@ -19,11 +21,11 @@ assoc_table_nodes_images = Table(
     Column('img_id', ForeignKey('images.id'), primary_key=True))
 
 
-class NCBINode(BaseSQLModel):
+class Node(BaseSQLModel):
     __tablename__ = 'nodes'
 
     tax_id: Mapped[int] = mapped_column(primary_key=True)
-    parent_tax_id: Mapped[Optional[int]] = mapped_column(ForeignKey('nodes.tax_id'), index=True)
+    parent_tax_id: Mapped[int] = mapped_column(ForeignKey('nodes.tax_id'), index=True)
     rank: Mapped[str]
     embl_code: Mapped[Optional[str]]
     division_id: Mapped[int] = mapped_column(ForeignKey('divisions.id'))
@@ -42,13 +44,12 @@ class NCBINode(BaseSQLModel):
     # hidden_subtree_root_flag: Mapped[bool]
     comments: Mapped[Optional[str]]
 
-    children = relationship(
-        'NCBINode', back_populates='parent')
+    children = relationship('Node', back_populates='parent')
 
     parent = relationship(
-        'NCBINode', back_populates='children', remote_side=[tax_id])
+        'Node', back_populates='children', remote_side=[tax_id])
 
-    names = relationship('NCBIName')
+    names = relationship('Name')
 
     division = relationship('Division', back_populates='nodes')
 
@@ -61,12 +62,12 @@ class NCBINode(BaseSQLModel):
         back_populates='nodes')
 
     def __repr__(self) -> str:
-        return f'NCBINode(tax_id={self.tax_id!r}, ' \
+        return f'Node(tax_id={self.tax_id!r}, ' \
             + f'parent_tax_id={self.parent_tax_id!r}, rank={self.rank!r}, ' \
             + f'genetic_code_id={self.genetic_code_id!r})'
 
 
-class NCBIName(BaseSQLModel):
+class Name(BaseSQLModel):
     __tablename__ = 'names'
     id: Mapped[int] = mapped_column(primary_key=True)
 
@@ -76,7 +77,7 @@ class NCBIName(BaseSQLModel):
     name_class: Mapped[str] = mapped_column(index=True)
 
     def __repr__(self) -> str:
-        return f'NCBIName(tax_id={self.tax_id!r}, name={self.name!r}, ' \
+        return f'Name(tax_id={self.tax_id!r}, name={self.name!r}, ' \
             + f'unique_name={self.unique_name!r}, ' \
             + f'name_class={self.name_class!r})'
 
@@ -89,7 +90,7 @@ class Division(BaseSQLModel):
     name: Mapped[str]
     comments: Mapped[Optional[str]]
 
-    nodes = relationship('NCBINode')
+    nodes = relationship('Node')
 
     def __repr__(self) -> str:
         return f'Division(id={self.id!r}, code={self.code!r}, ' \
@@ -109,23 +110,23 @@ class GeneticCode(BaseSQLModel):
         return f'GeneticCode(id={self.id!r}, name={self.name!r})'
 
 
-class NCBIDeletedNode(BaseSQLModel):
+class DeletedNode(BaseSQLModel):
     __tablename__ = 'deleted_nodes'
 
     tax_id: Mapped[int] = mapped_column(primary_key=True)
 
     def __repr__(self) -> str:
-        return f'NCBIDeletedNode(tax_id={self.tax_id!r})'
+        return f'DeletedNode(tax_id={self.tax_id!r})'
 
 
-class NCBIMergedNode(BaseSQLModel):
+class MergedNode(BaseSQLModel):
     __tablename__ = 'merged_nodes'
 
     old_tax_id: Mapped[int] = mapped_column(primary_key=True)
     new_tax_id: Mapped[int] = mapped_column(ForeignKey('nodes.tax_id'))
 
     def __repr__(self) -> str:
-        return f'NCBIMergedNode(old_tax_id={self.old_tax_id!r}, ' \
+        return f'MergedNode(old_tax_id={self.old_tax_id!r}, ' \
             + f'new_tax_id={self.new_tax_id!r})'
 
 
@@ -139,7 +140,7 @@ class Citation(BaseSQLModel):
     url: Mapped[Optional[str]]
     text: Mapped[Optional[str]]
 
-    nodes: Mapped[List[NCBINode]] = relationship(
+    nodes: Mapped[List[Node]] = relationship(
         secondary=assoc_table_nodes_citations,
         back_populates='citations')
 
@@ -158,7 +159,7 @@ class Image(BaseSQLModel):
     source: Mapped[str]
     # properties: Mapped[Optional[str]]
 
-    nodes: Mapped[List[NCBINode]] = relationship(
+    nodes: Mapped[List[Node]] = relationship(
         secondary=assoc_table_nodes_images,
         back_populates='images')
 

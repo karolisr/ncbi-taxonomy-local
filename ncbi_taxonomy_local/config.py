@@ -1,39 +1,20 @@
 import contextlib
-import sqlalchemy.exc
 from os.path import join as opj
+
+import sqlalchemy.exc
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
-from .utils import Log, make_dirs
-from .ncbi import TAXDMP_FILES, update_ncbi_taxonomy_data
+
 from .model_sql import BaseSQLModel
-from .populate_sql import (
-    populate_citations_table, populate_codons_table,
-    populate_deleted_nodes_table, populate_divisions_table,
-    populate_genetic_codes_table, populate_images_table,
-    populate_merged_nodes_table, populate_names_table, populate_nodes_table)
+from .ncbi import TAXDMP_FILES, update_ncbi_taxonomy_data
+from .populate_sql import (populate_citations_table, populate_codons_table,
+                           populate_deleted_nodes_table,
+                           populate_divisions_table,
+                           populate_genetic_codes_table, populate_images_table,
+                           populate_merged_nodes_table, populate_names_table,
+                           populate_nodes_table)
 
-
-NAME_CLASS_SET = {
-    'acronym',
-    'anamorph',
-    'authority',
-    'blast name',
-    'common name',
-    'equivalent name',
-    'genbank acronym',
-    'genbank anamorph',
-    'genbank common name',
-    'genbank synonym',
-    'in-part',
-    'includes',
-    'misnomer',
-    'misspelling',
-    'scientific name',
-    'synonym',
-    'teleomorph',
-    'type material',
-}
-
+from .utils import Log, make_dirs
 
 DIR_BASE = opj('~', '.local', 'share', 'ncbi-taxonomy-local')
 
@@ -86,45 +67,37 @@ def init_local_storage(dir_local_storage=DIR_BASE, force_redownload=False,
     return paths
 
 
-PG_TERMINATE_CONNS = """
--- Terminate any existing connections to this database
-SELECT
-    pg_terminate_backend(pg_stat_activity.pid)
-FROM
-    pg_stat_activity
-WHERE
-    pg_stat_activity.datname = 'taxonomy'
-    AND pid <> pg_backend_pid();
-"""
+# PG_TERMINATE_CONNS = """
+# -- Terminate any existing connections to this database
+# SELECT
+#     pg_terminate_backend(pg_stat_activity.pid)
+# FROM
+#     pg_stat_activity
+# WHERE
+#     pg_stat_activity.datname = 'taxonomy'
+#     AND pid <> pg_backend_pid();
+# """
+
+# ------------------------------------------------------------------------
+# engine = create_engine('postgresql+psycopg2://localhost/postgres', echo=echo)
+# with contextlib.suppress(sqlalchemy.exc.ProgrammingError):
+#     with engine.connect() as conn:
+#         conn.execute(text('commit'))
+#         conn.execute(text(PG_TERMINATE_CONNS))
+#         conn.execute(text('commit'))
+#         conn.execute(text('DROP DATABASE taxonomy'))
+#         conn.execute(text('commit'))
+#         conn.execute(text('CREATE DATABASE taxonomy'))
+# ------------------------------------------------------------------------
+# with contextlib.suppress(sqlalchemy.exc.ProgrammingError):
+#     with engine.connect() as conn:
+#         conn.execute(text('commit'))
+#         conn.execute(text('CREATE DATABASE taxonomy'))
+# ------------------------------------------------------------------------
 
 
-def init_db(paths: dict[str, str], echo: bool = False):
-
-    file_db = paths['file_db']
-
-    # ------------------------------------------------------------------------
-    engine = create_engine(f'sqlite:///{file_db}', echo=echo)
-    # engine = create_engine('postgresql+psycopg2://user:password@localhost/taxonomy', echo=echo)
-    # ------------------------------------------------------------------------
-
-    # ------------------------------------------------------------------------
-    # engine = create_engine('postgresql+psycopg2://localhost/postgres', echo=echo)
-    # with contextlib.suppress(sqlalchemy.exc.ProgrammingError):
-    #     with engine.connect() as conn:
-    #         conn.execute(text('commit'))
-    #         conn.execute(text(PG_TERMINATE_CONNS))
-    #         conn.execute(text('commit'))
-    #         conn.execute(text('DROP DATABASE taxonomy'))
-    #         conn.execute(text('commit'))
-    #         conn.execute(text('CREATE DATABASE taxonomy'))
-
-    # with contextlib.suppress(sqlalchemy.exc.ProgrammingError):
-    #     with engine.connect() as conn:
-    #         conn.execute(text('commit'))
-    #         conn.execute(text('CREATE DATABASE taxonomy'))
-    # ------------------------------------------------------------------------
-
-    # engine = create_engine('postgresql+psycopg2://localhost/taxonomy', echo=echo)
+def init_db(url: str, echo: bool = False):
+    engine = create_engine(url, echo=echo)
     BaseSQLModel.metadata.create_all(bind=engine, checkfirst=True)
     Session = sessionmaker(engine)
     return Session

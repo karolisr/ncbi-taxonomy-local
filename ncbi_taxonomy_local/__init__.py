@@ -19,25 +19,31 @@ __license__ = 'Creative Commons Attribution-ShareAlike 4.0 International ' \
 __url__ = 'https://github.com/karolisr/ncbi-taxonomy-local'
 
 
-class Taxonomy(object):
-    """
-    Taxonomy.
-    """
+class Taxonomy:
 
-    def __new__(cls, backend='SQL', data_dir=None, logger=Log):
-        backend = backend.upper()
-        if backend in ('RAM', 'SQL'):
+    def __new__(cls,
+                backend='RAM',
+                data_dir=None,
+                logger=Log,
+                db_user='',
+                db_pass='',
+                db_host_or_ip='localhost',
+                db_name='taxonomy'):
+
+        if backend in ('RAM', 'SQLite', 'PostgreSQL'):
+
             if backend == 'RAM':
-                return TaxonomyRAM(data_dir=data_dir, logger=logger)
-            elif backend == 'SQL':
-                return TaxonomySQL(data_dir=data_dir, logger=logger)
+                return TaxonomyRAM(data_dir, logger)
+
+            elif backend == 'SQLite':
+                return TaxonomySQL(data_dir, logger, backend)
+
+            elif backend == 'PostgreSQL':
+                return TaxonomySQL(data_dir, logger, backend,
+                                   db_user, db_pass, db_host_or_ip, db_name)
+
         else:
             raise Exception(f'Invalid backend type: {backend}')
-
-    # __init__ declaration is exactly the same as __new__ so Sphinx
-    # docstring parser picks it up.
-    def __init__(self, backend='RAM', data_dir=None, logger=Log):
-        pass
 
 
 __all__ = ['Taxonomy']

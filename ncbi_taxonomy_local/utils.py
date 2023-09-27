@@ -1,15 +1,15 @@
 """Miscellaneous helper functions."""
 
+from difflib import unified_diff
 from hashlib import md5
-from zipfile import ZipFile
-
 from os import makedirs
 from os.path import abspath
 from os.path import exists as ope
 from os.path import expanduser
-from subprocess import run as subp_run, CalledProcessError, CompletedProcess
+from subprocess import CalledProcessError, CompletedProcess
+from subprocess import run as subp_run
 from urllib.request import urlretrieve
-from difflib import unified_diff
+from zipfile import ZipFile
 
 
 class Log:

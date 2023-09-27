@@ -1,11 +1,10 @@
 import os
-from shutil import move
-
 from os.path import join as opj
-from .utils import Log
-from .utils import (download_file, extract_md5_hash, make_dirs,
-                    dnld_zip_check_md5_then_extract, diff_files)
+from shutil import move, rmtree
+from typing import Any
 
+from .utils import (Log, diff_files, dnld_zip_check_md5_then_extract,
+                    download_file, extract_md5_hash, make_dirs)
 
 TAX_BASE_URL = 'https://ftp.ncbi.nlm.nih.gov/pub/taxonomy/'
 TAXDMP_ZIP = 'taxdmp.zip'
@@ -53,11 +52,13 @@ def update_ncbi_taxonomy_data(taxdmp_path, force_redownload=False,
                     download_taxdmp = True
 
     if download_taxdmp is True:
+        logger.inf('Updating NCBI taxonomy data.')
         if os.path.exists(taxdmp_md5_path):
-            logger.wrn('Backing up existing taxdmp directory.')
+            logger.inf('Backing up existing taxdmp directory.')
+            rmtree(f'{taxdmp_path}.bak', ignore_errors=True)
             move(taxdmp_path, f'{taxdmp_path}.bak')
             make_dirs(taxdmp_path)
-        logger.wrn('Downloading taxdmp file from NCBI.')
+        logger.inf('Downloading taxdmp file from NCBI.')
         dnld_zip_check_md5_then_extract(
             directory_path=taxdmp_path,
             zip_url=f'{TAX_BASE_URL}{TAXDMP_ZIP}',
@@ -71,6 +72,7 @@ def update_ncbi_taxonomy_data(taxdmp_path, force_redownload=False,
 
 
 def rows_from_dmp_lines(lines: list[str]):
+
     # From the NCBI readme file:
     #   *.dmp files are bcp-like dump from GenBank taxonomy database.
     #   Field terminator is "\t|\t"
@@ -89,7 +91,7 @@ def rows_from_dmp_file(file_path):
     return rows_from_dmp_lines(ls)
 
 
-def codons_from_gc_prt_file(file_path):
+def codons_from_gc_prt_file(file_path) -> list[str]:
     base1 = base2 = base3 = ''
 
     base1_start = '  -- Base1  '
@@ -113,15 +115,15 @@ def codons_from_gc_prt_file(file_path):
     return [''.join(x) for x in cs]
 
 
-def parse_names_dump(file_path):
+def parse_names_dump(file_path) -> dict[str, dict[Any, list]]:
     rows = rows_from_dmp_file(file_path=file_path)
 
-    txid_keyed_dict = dict()
-    name_keyed_dict = dict()
+    txid_keyed_dict: dict[int, list] = dict()
+    name_keyed_dict: dict[str, list] = dict()
 
     for r in rows:
 
-        tax_id = r[0]
+        tax_id = int(r[0])
         name = r[1]
         unique_name = r[2]
         name_class = r[3]
@@ -140,44 +142,45 @@ def parse_names_dump(file_path):
             'name_keyed_dict': name_keyed_dict}
 
 
-def parse_delnodes_dump(file_path):
+def parse_delnodes_dump(file_path) -> set[int]:
     rows = rows_from_dmp_file(file_path=file_path)
-    tax_id_set = set()
+    tax_id_set: set[int] = set()
     for r in rows:
-        tax_id_set.add(r[0])
+        tax_id = int(r[0])
+        tax_id_set.add(tax_id)
     return tax_id_set
 
 
-def parse_merged_dump(file_path):
+def parse_merged_dump(file_path) -> dict[int, int]:
     rows = rows_from_dmp_file(file_path=file_path)
-    new_to_old_tax_id_mapping_dict = dict()
+    new_to_old_tax_id_dict: dict[int, int] = dict()
     for r in rows:
-        old_tax_id = r[0]
-        new_tax_id = r[1]
-        new_to_old_tax_id_mapping_dict[old_tax_id] = new_tax_id
-    return new_to_old_tax_id_mapping_dict
+        old_tax_id = int(r[0])
+        new_tax_id = int(r[1])
+        new_to_old_tax_id_dict[old_tax_id] = new_tax_id
+    return new_to_old_tax_id_dict
 
 
 def parse_nodes_dump(file_path):
     rows = rows_from_dmp_file(file_path=file_path)
 
-    child_to_parent_tax_id_mapping_dict = dict()
-    taxid_rank_dict = dict()
-    taxid_genetic_code_id_dict = dict()
-    taxid_mitochondrial_genetic_code_id_dict = dict()
+    child_to_parent_tax_id_dict: dict[int, int] = dict()
+    taxid_rank_dict: dict[int, str] = dict()
+    taxid_genetic_code_id_dict: dict[int, int] = dict()
+    taxid_mitochondrial_genetic_code_id_dict: dict[int, int] = dict()
 
     for r in rows:
 
-        tax_id = r[0]
-        parent_tax_id = r[1]
+        tax_id = int(r[0])
+        parent_tax_id = int(r[1])
         rank = r[2]
 
         # embl_code = r[3]
         # division_id = r[4]
         # inherited_div_flag = r[5]
-        genetic_code_id = r[6]
+        genetic_code_id = int(r[6])
         # inherited_GC_flag = r[7]
-        mitochondrial_genetic_code_id = r[8]
+        mitochondrial_genetic_code_id = int(r[8])
         # inherited_MGC_flag = r[9]
         # GenBank_hidden_flag = r[10]
         # hidden_subtree_root_flag = r[11]
@@ -185,28 +188,28 @@ def parse_nodes_dump(file_path):
         # not every row contains this column, and it is not needed
         # comments = r[12]
 
-        child_to_parent_tax_id_mapping_dict[tax_id] = parent_tax_id
+        child_to_parent_tax_id_dict[tax_id] = parent_tax_id
         taxid_rank_dict[tax_id] = rank
         taxid_genetic_code_id_dict[tax_id] = genetic_code_id
         taxid_mitochondrial_genetic_code_id_dict[tax_id] = \
             mitochondrial_genetic_code_id
 
-    parent_tax_ids = set(child_to_parent_tax_id_mapping_dict.values())
+    parent_tax_ids = set(child_to_parent_tax_id_dict.values())
 
-    parent_to_children_tax_id_mapping_dict = dict()
+    parent_to_children_tax_id_dict = dict()
     for ptxid in parent_tax_ids:
-        parent_to_children_tax_id_mapping_dict[ptxid] = []
+        parent_to_children_tax_id_dict[ptxid] = []
 
-    for ctxid in child_to_parent_tax_id_mapping_dict:
-        ptxid = child_to_parent_tax_id_mapping_dict[ctxid]
-        parent_to_children_tax_id_mapping_dict[ptxid].append(ctxid)
+    for ctxid in child_to_parent_tax_id_dict:
+        ptxid = child_to_parent_tax_id_dict[ctxid]
+        parent_to_children_tax_id_dict[ptxid].append(ctxid)
 
-    return_value = [
-        parent_to_children_tax_id_mapping_dict,
-        child_to_parent_tax_id_mapping_dict,
+    return_value = (
+        parent_to_children_tax_id_dict,
+        child_to_parent_tax_id_dict,
         taxid_rank_dict,
         taxid_genetic_code_id_dict,
-        taxid_mitochondrial_genetic_code_id_dict]
+        taxid_mitochondrial_genetic_code_id_dict)
 
     return return_value
 
@@ -220,7 +223,7 @@ def parse_gencode_dump(file_path):
 
     for r in rows:
 
-        genetic_code_id = r[0]
+        genetic_code_id = int(r[0])
         # abbreviation = r[1]
         name = r[2]
         translation_table = r[3].strip()
