@@ -60,11 +60,15 @@ class TaxonomySQL(Taxonomy):
 
         cls._sess = init_db(url)()
         cls._taxonomy_initialized = True
-        cls._root_node = cls.node(cls._root_taxid)
+        cls._root_node = cls.node_for_taxid(cls._root_taxid)
 
     @classmethod  # --------------------------------------------------------
     def update(cls, check_for_updates=False):
         super().update(check_for_updates=check_for_updates)
+
+    # **********************************************************************
+    # Operations on integer taxids.
+    # **********************************************************************
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
@@ -114,53 +118,9 @@ class TaxonomySQL(Taxonomy):
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
-    def root_node(cls) -> Node:
-        return cls._root_node
-
-    @classmethod  # --------------------------------------------------------
-    @_check_initialized
-    def node(cls, taxid: int) -> Node:
-        cls.taxid_valid_raise(taxid)
-        txid = cls.updated_taxid(taxid)
-        stmt = select(Node).where(Node.tax_id == txid)
-        node = cls._sess.scalars(stmt).all()
-        assert len(node) == 1
-        return node[0]
-
-    @classmethod  # --------------------------------------------------------
-    @_check_initialized
-    def nodes(cls, taxids: Collection[int]) -> list[Node]:
-        return [cls.node(x) for x in taxids]
-
-    @classmethod  # --------------------------------------------------------
-    @_check_initialized
-    def taxids(cls, nodes: Collection[Node]) -> list[int]:
-        return [x.tax_id for x in nodes]
-
-    @classmethod  # --------------------------------------------------------
-    @_check_initialized
-    def lineage_of_nodes(cls, node: Node) -> list[Node]:
-
-        @staticmethod  # ---------------------------------------------------
-        def recurse_lineage(n: Node, lineage: MutableSequence[Node]) -> list[Node]:
-            lineage.append(n)
-            if n != cls.root_node():
-                n = n.parent
-                return recurse_lineage(n, lineage)
-            else:
-                return list(lineage)
-        # ------------------------------------------------------------------
-
-        lineage = list()
-        lineage = recurse_lineage(node, lineage)
-        lineage.reverse()
-        return lineage
-
-    @classmethod  # --------------------------------------------------------
-    @_check_initialized
     def lineage_of_taxids(cls, taxid: int) -> list[int]:
         cls.taxid_valid_raise(taxid)
-        nd = cls.node(taxid)
+        nd = cls.node_for_taxid(taxid)
         ln = cls.lineage_of_nodes(nd)
         ln_taxid = [n.tax_id for n in ln]
         return ln_taxid
@@ -169,14 +129,15 @@ class TaxonomySQL(Taxonomy):
     @_check_initialized
     def lineage_of_ranks(cls, taxid: int) -> list[str]:
         cls.taxid_valid_raise(taxid)
-        nd = cls.node(taxid)
+        nd = cls.node_for_taxid(taxid)
         ln = cls.lineage_of_nodes(nd)
         ln_rank = [n.rank for n in ln]
         return ln_rank
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
-    def lineage_of_names(cls, taxid: int, name_class: str = 'scientific name') -> list[str]:
+    def lineage_of_names(cls, taxid: int, name_class: str = 'scientific name'
+                         ) -> list[str]:
         cls.taxid_valid_raise(taxid)
         ln_taxid = cls.lineage_of_taxids(taxid)
         ln_name = [cls.name_for_taxid(x, name_class) for x in ln_taxid]
@@ -184,37 +145,16 @@ class TaxonomySQL(Taxonomy):
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
-    def common_node(cls, nodes: Collection[Node]) -> Node:
-        nodes = list(nodes)
-        shared = set(cls.lineage_of_nodes(nodes[0]))
-        for node in nodes[1:]:
-            lineage = cls.lineage_of_nodes(node)
-            shared = shared & set(lineage)
-        shared_lineage = tuple()
-        for node in shared:
-            lineage = cls.lineage_of_nodes(node)
-            if len(lineage) > len(shared_lineage):
-                shared_lineage = lineage
-        return shared_lineage[-1]
-
-    @classmethod  # --------------------------------------------------------
-    @_check_initialized
     def common_taxid(cls, taxids: Collection[int]) -> int:
-        nodes = cls.nodes(taxids)
+        nodes = cls.nodes_for_taxids(taxids)
         node = cls.common_node(nodes)
         return node.tax_id
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
-    def names_for_node(cls, node: Node) -> dict[str, tuple[str]]:
-        names: list[Name] = list(node.names)
-        return invert_dict({x.name: x.name_class for x in names}, tuple, True)
-
-    @classmethod  # --------------------------------------------------------
-    @_check_initialized
     def names_for_taxid(cls, taxid: int) -> dict[str, tuple[str]]:
         cls.taxid_valid_raise(taxid)
-        nd = cls.node(taxid)
+        nd = cls.node_for_taxid(taxid)
         return cls.names_for_node(nd)
 
     @classmethod  # --------------------------------------------------------
@@ -230,27 +170,11 @@ class TaxonomySQL(Taxonomy):
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
-    def nodes_for_name(cls, name: str) -> list[Node]:
-        return cls.nodes(cls.taxids_for_name(name))
-
-    @classmethod  # --------------------------------------------------------
-    @_check_initialized
-    def path_between_nodes(cls, node1: Node, node2: Node) -> list[Node]:
-        if node1 == node2:
-            return [node1]
-
-        ln1 = cls.lineage_of_nodes(node1)
-        ln2 = cls.lineage_of_nodes(node2)
-
-        return path_between_lineages(ln1, ln2)
-
-    @classmethod  # --------------------------------------------------------
-    @_check_initialized
     def path_between_taxids(cls, taxid1: int, taxid2: int) -> list[int]:
         cls.taxid_valid_raise(taxid1)
         cls.taxid_valid_raise(taxid2)
-        nd1 = cls.node(taxid1)
-        nd2 = cls.node(taxid2)
+        nd1 = cls.node_for_taxid(taxid1)
+        nd2 = cls.node_for_taxid(taxid2)
         path_nd = cls.path_between_nodes(nd1, nd2)
         return [n.tax_id for n in path_nd]
 
@@ -258,14 +182,14 @@ class TaxonomySQL(Taxonomy):
     @_check_initialized
     def rank_for_taxid(cls, taxid: int) -> str:
         cls.taxid_valid_raise(taxid)
-        nd = cls.node(taxid)
+        nd = cls.node_for_taxid(taxid)
         return nd.rank
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
     def parent_taxid(cls, taxid: int) -> int:
         cls.taxid_valid_raise(taxid)
-        nd = cls.node(taxid)
+        nd = cls.node_for_taxid(taxid)
         return nd.parent_tax_id
 
     @classmethod  # --------------------------------------------------------
@@ -273,8 +197,8 @@ class TaxonomySQL(Taxonomy):
     def children_taxids(cls, taxid: int) -> set[int]:
         cls.taxid_valid_raise(taxid)
         taxid = cls.updated_taxid(taxid)
-        nd = cls.node(taxid)
-        return set(cls.taxids(nd.children))
+        nd = cls.node_for_taxid(taxid)
+        return set(cls.taxids_for_nodes(nd.children))
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
@@ -293,17 +217,101 @@ class TaxonomySQL(Taxonomy):
     @_check_initialized
     def genetic_code_for_taxid(cls, taxid: int) -> int:
         cls.taxid_valid_raise(taxid)
-        nd = cls.node(taxid)
+        nd = cls.node_for_taxid(taxid)
         return nd.genetic_code_id
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
     def mito_genetic_code_for_taxid(cls, taxid: int) -> int:
         cls.taxid_valid_raise(taxid)
-        nd = cls.node(taxid)
+        nd = cls.node_for_taxid(taxid)
         mtgcid = nd.mitochondrial_genetic_code_id
         if mtgcid is None:
             mtgcid = 0
         return mtgcid
 
     # **********************************************************************
+    # Operations on Node objects.
+    # **********************************************************************
+
+    @classmethod  # --------------------------------------------------------
+    @_check_initialized
+    def node_for_taxid(cls, taxid: int) -> Node:
+        cls.taxid_valid_raise(taxid)
+        txid = cls.updated_taxid(taxid)
+        stmt = select(Node).where(Node.tax_id == txid)
+        node = cls._sess.scalars(stmt).all()
+        assert len(node) == 1
+        return node[0]
+
+    @classmethod  # --------------------------------------------------------
+    @_check_initialized
+    def nodes_for_taxids(cls, taxids: Collection[int]) -> list[Node]:
+        return [cls.node_for_taxid(x) for x in taxids]
+
+    @classmethod  # --------------------------------------------------------
+    @_check_initialized
+    def root_node(cls) -> Node:
+        return cls._root_node
+
+    @classmethod  # --------------------------------------------------------
+    @_check_initialized
+    def taxids_for_nodes(cls, nodes: Collection[Node]) -> list[int]:
+        return [x.tax_id for x in nodes]
+
+    @classmethod  # --------------------------------------------------------
+    @_check_initialized
+    def lineage_of_nodes(cls, node: Node) -> list[Node]:
+
+        @staticmethod  # ---------------------------------------------------
+        def recurse_lineage(n: Node, lineage: MutableSequence[Node]
+                            ) -> list[Node]:
+            lineage.append(n)
+            if n != cls.root_node():
+                n = n.parent
+                return recurse_lineage(n, lineage)
+            else:
+                return list(lineage)
+        # ------------------------------------------------------------------
+
+        lineage = list()
+        lineage = recurse_lineage(node, lineage)
+        lineage.reverse()
+        return lineage
+
+    @classmethod  # --------------------------------------------------------
+    @_check_initialized
+    def common_node(cls, nodes: Collection[Node]) -> Node:
+        nodes = list(nodes)
+        shared = set(cls.lineage_of_nodes(nodes[0]))
+        for node in nodes[1:]:
+            lineage = cls.lineage_of_nodes(node)
+            shared = shared & set(lineage)
+        shared_lineage = tuple()
+        for node in shared:
+            lineage = cls.lineage_of_nodes(node)
+            if len(lineage) > len(shared_lineage):
+                shared_lineage = lineage
+        return shared_lineage[-1]
+
+    @classmethod  # --------------------------------------------------------
+    @_check_initialized
+    def names_for_node(cls, node: Node) -> dict[str, tuple[str]]:
+        names: list[Name] = list(node.names)
+        return invert_dict({x.name: x.name_class for x in names}, tuple, True)
+
+    @classmethod  # --------------------------------------------------------
+    @_check_initialized
+    def nodes_for_name(cls, name: str) -> list[Node]:
+        return cls.nodes_for_taxids(cls.taxids_for_name(name))
+
+    @classmethod  # --------------------------------------------------------
+    @_check_initialized
+    def path_between_nodes(cls, node1: Node, node2: Node) -> list[Node]:
+        if node1 == node2:
+            return [node1]
+
+        ln1 = cls.lineage_of_nodes(node1)
+        ln2 = cls.lineage_of_nodes(node2)
+
+        return path_between_lineages(ln1, ln2)

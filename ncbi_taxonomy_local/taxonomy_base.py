@@ -64,7 +64,8 @@ def name_variations(name: str) -> set[str]:
 
 def path_between_lineages(ln1: Sequence[Any], ln2: Sequence[Any]) -> list[Any]:
     shared = takewhile(lambda x: eq(x[0], x[1]), zip(ln1, ln2))
-    diff = dropwhile(lambda x: eq(x[0], x[1]), zip_longest(ln1, ln2, fillvalue=-1))
+    diff = dropwhile(lambda x: eq(x[0], x[1]), zip_longest(ln1, ln2,
+                                                           fillvalue=-1))
     paths = tuple(zip(*diff))
     return list(
         filter(partial(ne, -1),
@@ -134,7 +135,8 @@ class Taxonomy(ABC):
 
         cls._codons = codons_from_gc_prt_file(cls._paths['file_gc'])
 
-        parse_gencode_dump_result = parse_gencode_dump(cls._paths['file_gencode'])
+        parse_gencode_dump_result = parse_gencode_dump(
+            cls._paths['file_gencode'])
 
         cls._gen_code_id_name_dict = parse_gencode_dump_result[0]
         cls._gen_code_id_translation_table_dict = parse_gencode_dump_result[1]
@@ -148,6 +150,10 @@ class Taxonomy(ABC):
     @_check_initialized
     def codons(cls):
         return cls._codons
+
+    # **********************************************************************
+    # Operations on integer taxids.
+    # **********************************************************************
 
     @classmethod  # --------------------------------------------------------
     @abstractmethod
@@ -211,12 +217,53 @@ class Taxonomy(ABC):
 
     @classmethod  # --------------------------------------------------------
     @abstractmethod
+    def lineage_of_ranks(cls, taxid: int) -> list[str]:
+        ...
+
+    @classmethod  # --------------------------------------------------------
+    @abstractmethod
+    def lineage_of_names(cls, taxid: int, name_class: str) -> list[str]:
+        ...
+
+    @classmethod  # --------------------------------------------------------
+    @abstractmethod
     def common_taxid(cls, taxids: Collection[int]) -> int:
         ...
 
     @classmethod  # --------------------------------------------------------
     @abstractmethod
+    def names_for_taxid(cls, taxid: int) -> dict[str, tuple[str]]:
+        ...
+
+    @classmethod  # --------------------------------------------------------
+    @abstractmethod
+    def taxids_for_name(cls, name: str) -> list[int]:
+        ...
+
+    @classmethod  # --------------------------------------------------------
+    @abstractmethod
+    def path_between_taxids(cls, taxid1: int, taxid2: int) -> list[int]:
+        ...
+
+    @classmethod  # --------------------------------------------------------
+    @abstractmethod
+    def rank_for_taxid(cls, taxid: int) -> str:
+        ...
+
+    @classmethod  # --------------------------------------------------------
+    @abstractmethod
+    def parent_taxid(cls, taxid: int) -> int:
+        ...
+
+    @classmethod  # --------------------------------------------------------
+    @abstractmethod
     def children_taxids(cls, taxid: int) -> set[int]:
+        ...
+
+    @classmethod  # --------------------------------------------------------
+    @abstractmethod
+    def higher_rank_for_taxid(cls, taxid: int, rank: str, name_class: str
+                              ) -> str:
         ...
 
     @classmethod  # --------------------------------------------------------
@@ -231,7 +278,8 @@ class Taxonomy(ABC):
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
-    def all_descending_taxids_for_taxids(cls, taxids: Collection[int]) -> set[int]:
+    def all_descending_taxids_for_taxids(cls, taxids: Collection[int]
+                                         ) -> set[int]:
         lca_taxid = cls.common_taxid(taxids)
         taxids = cls.all_descending_taxids(lca_taxid)
         taxids.add(lca_taxid)
@@ -249,28 +297,21 @@ class Taxonomy(ABC):
 
         if True in lcas:
             if lcas.count(True) > 1:
-                print(f'Group {grp_taxid} ({grp_name}) is too broad; multiple taxa with the name "{name}" were found.')
+                print(f'Group {grp_taxid} ({grp_name}) is too broad; multiple '
+                      f'taxa with the name "{name}" were found.')
                 return -2
             else:
                 idx = lcas.index(True)
                 return taxids[idx]
         else:
-            print(f'{name} does not belong to the group {grp_taxid} ({grp_name}).')
+            print(f'{name} does not belong to the group {grp_taxid} '
+                  f'({grp_name}).')
             return -2
 
     @classmethod  # --------------------------------------------------------
-    @abstractmethod
-    def names_for_taxid(cls, taxid: int) -> dict[str, tuple[str]]:
-        ...
-
-    @classmethod  # --------------------------------------------------------
-    @abstractmethod
-    def taxids_for_name(cls, name: str) -> list[int]:
-        ...
-
-    @classmethod  # --------------------------------------------------------
     @_check_initialized
-    def names_of_class_for_taxid(cls, taxid: int, name_class: str) -> tuple[str]:
+    def names_of_class_for_taxid(cls, taxid: int, name_class: str
+                                 ) -> tuple[str]:
         cls.taxid_valid_raise(taxid)
         if name_class not in cls.name_classes():
             raise NameClassInvalidError(name_class)
@@ -281,7 +322,8 @@ class Taxonomy(ABC):
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
-    def name_for_taxid(cls, taxid: int, name_class: str = 'scientific name') -> str:
+    def name_for_taxid(cls, taxid: int, name_class: str = 'scientific name'
+                       ) -> str:
         cls.taxid_valid_raise(taxid)
         names = cls.names_of_class_for_taxid(taxid, name_class)
         if len(names) > 0:
@@ -306,7 +348,8 @@ class Taxonomy(ABC):
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
-    def trans_table_for_genetic_code_id(cls, gcid: int) -> dict[str, Union[dict, list]]:
+    def trans_table_for_genetic_code_id(cls, gcid: int
+                                        ) -> dict[str, Union[dict, list]]:
         codons = cls.codons()
         tt = cls._gen_code_id_translation_table_dict[gcid]
         sc = cls._gen_code_id_start_codons_dict[gcid]

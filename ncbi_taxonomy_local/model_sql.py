@@ -25,7 +25,8 @@ class Node(BaseSQLModel):
     __tablename__ = 'nodes'
 
     tax_id: Mapped[int] = mapped_column(primary_key=True)
-    parent_tax_id: Mapped[int] = mapped_column(ForeignKey('nodes.tax_id'), index=True)
+    parent_tax_id: Mapped[int] = mapped_column(ForeignKey('nodes.tax_id'),
+                                               index=True)
     rank: Mapped[str]
     embl_code: Mapped[Optional[str]]
     division_id: Mapped[int] = mapped_column(ForeignKey('divisions.id'))

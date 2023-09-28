@@ -52,8 +52,10 @@ class TaxonomyRAM(Taxonomy):
         cls._names_taxids_dict = tax_dict['name_keyed_dict']
         cls._taxids_names_dict = tax_dict['tax_id_keyed_dict']
 
-        cls._taxids_deleted_set = parse_delnodes_dump(cls._paths['file_delnodes'])
-        cls._taxids_merged_dict = parse_merged_dump(cls._paths['file_merged'])
+        cls._taxids_deleted_set = parse_delnodes_dump(
+            cls._paths['file_delnodes'])
+        cls._taxids_merged_dict = parse_merged_dump(
+            cls._paths['file_merged'])
 
         _ = parse_nodes_dump(cls._paths['file_nodes'])
         cls._taxids_parent_children_dict = _[0]
@@ -61,6 +63,10 @@ class TaxonomyRAM(Taxonomy):
         cls._taxids_rank_dict = _[2]
         cls._taxids_genetic_code_id_dict = _[3]
         cls._taxids_mito_genetic_code_id_dict = _[4]
+
+    # **********************************************************************
+    # Operations on integer taxids.
+    # **********************************************************************
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
@@ -102,41 +108,6 @@ class TaxonomyRAM(Taxonomy):
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
-    def _lineage(cls, taxid: int, name_class='scientific name') -> dict[str, list]:
-        cls.taxid_valid_raise(taxid)
-        return_dict = dict()
-        return_dict['old_taxid'] = taxid
-        new_taxid = cls.updated_taxid(taxid=taxid)
-        return_dict['new_taxid'] = new_taxid
-        return_dict['taxids'] = []
-        return_dict['ranks'] = []
-        return_dict['names'] = []
-
-        def recurse_lineage(taxid, lineage):
-            lineage.append(taxid)
-            if taxid != cls.root_taxid():
-                taxid = cls.parent_taxid(taxid=taxid)
-                return recurse_lineage(taxid, lineage)
-            else:
-                return lineage
-
-        taxids = list()
-        if new_taxid > 0:
-            taxids = recurse_lineage(taxid=new_taxid, lineage=taxids)
-
-        taxids.reverse()
-        return_dict['taxids'] = taxids
-
-        ranks = [cls.rank_for_taxid(taxid=x) for x in taxids]
-        return_dict['ranks'] = ranks
-
-        names = [cls.name_for_taxid(x, name_class) for x in taxids]
-        return_dict['names'] = names
-
-        return return_dict
-
-    @classmethod  # --------------------------------------------------------
-    @_check_initialized
     def lineage_of_taxids(cls, taxid: int) -> list[int]:
         ln = cls._lineage(taxid)
         return ln['taxids']
@@ -149,7 +120,8 @@ class TaxonomyRAM(Taxonomy):
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
-    def lineage_of_names(cls, taxid: int, name_class: str = 'scientific name') -> list[str]:
+    def lineage_of_names(cls, taxid: int, name_class: str = 'scientific name'
+                         ) -> list[str]:
         ln = cls._lineage(taxid, name_class)
         return ln['names']
 
@@ -174,7 +146,8 @@ class TaxonomyRAM(Taxonomy):
     def names_for_taxid(cls, taxid: int) -> dict[str, tuple[str]]:
         cls.taxid_valid_raise(taxid)
         names = cls._taxids_names_dict[cls.updated_taxid(taxid=taxid)]
-        return invert_dict({x['name']: x['name_class'] for x in names}, tuple, True)
+        return invert_dict({x['name']: x['name_class'] for x in names}, tuple,
+                           True)
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
@@ -247,3 +220,43 @@ class TaxonomyRAM(Taxonomy):
     def mito_genetic_code_for_taxid(cls, taxid: int) -> int:
         cls.taxid_valid_raise(taxid)
         return cls._taxids_mito_genetic_code_id_dict[taxid]
+
+    # **********************************************************************
+    # Private methods.
+    # **********************************************************************
+
+    @classmethod  # --------------------------------------------------------
+    @_check_initialized
+    def _lineage(cls, taxid: int, name_class: str = 'scientific name'
+                 ) -> dict[str, list]:
+        cls.taxid_valid_raise(taxid)
+        return_dict = dict()
+        return_dict['old_taxid'] = taxid
+        new_taxid = cls.updated_taxid(taxid=taxid)
+        return_dict['new_taxid'] = new_taxid
+        return_dict['taxids'] = []
+        return_dict['ranks'] = []
+        return_dict['names'] = []
+
+        def recurse_lineage(taxid, lineage):
+            lineage.append(taxid)
+            if taxid != cls.root_taxid():
+                taxid = cls.parent_taxid(taxid=taxid)
+                return recurse_lineage(taxid, lineage)
+            else:
+                return lineage
+
+        taxids = list()
+        if new_taxid > 0:
+            taxids = recurse_lineage(taxid=new_taxid, lineage=taxids)
+
+        taxids.reverse()
+        return_dict['taxids'] = taxids
+
+        ranks = [cls.rank_for_taxid(taxid=x) for x in taxids]
+        return_dict['ranks'] = ranks
+
+        names = [cls.name_for_taxid(x, name_class) for x in taxids]
+        return_dict['names'] = names
+
+        return return_dict
