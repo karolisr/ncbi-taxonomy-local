@@ -8,6 +8,7 @@ from os.path import exists as ope
 from os.path import expanduser
 from subprocess import CalledProcessError, CompletedProcess
 from subprocess import run as subp_run
+from typing import Any
 from urllib.request import urlretrieve
 from zipfile import ZipFile
 
@@ -157,9 +158,10 @@ def extract_md5_hash(file_path):
     return ""
 
 
-def dnld_zip_check_md5_then_extract(directory_path,
-                                    zip_url, md5_url,
-                                    zip_path, md5_path, logger=Log):
+def dnld_zip_check_md5_then_extract(directory_path: str,
+                                    zip_url: str, md5_url: str,
+                                    zip_path: str, md5_path: str,
+                                    logger: Any = Log):
 
     download_file(zip_url, zip_path)
     download_file(md5_url, md5_path)
@@ -171,7 +173,7 @@ def dnld_zip_check_md5_then_extract(directory_path,
 
     if md5_reported != md5_actual:
         logger.err('The MD5 hash does not match the expected value:',
-                   'retrying.')
+                   'retrying.', '')
         dnld_zip_check_md5_then_extract(directory_path, zip_url, md5_url,
                                         zip_path, md5_path, logger)
     else:

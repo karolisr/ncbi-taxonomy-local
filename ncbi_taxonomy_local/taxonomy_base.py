@@ -59,7 +59,9 @@ TAXIDS_WITH_PLASTIDS = {
 def name_variations(name: str) -> set[str]:
     name_alt_1 = name[0].upper() + name[1:]
     name_alt_2 = name[0].lower() + name[1:]
-    return {name, name_alt_1, name_alt_2}
+    alt_names = [name, name_alt_1, name_alt_2]
+    alt_names += [x.replace('_', ' ') for x in alt_names]
+    return set(alt_names)
 
 
 def path_between_lineages(ln1: Sequence[Any], ln2: Sequence[Any]) -> list[Any]:
@@ -84,7 +86,7 @@ def _check_initialized(func):
 
 class Taxonomy(ABC):
 
-    _logger = Log
+    _logger: Any = Log
     _taxonomy_initialized: bool = False
     _data_dir: Union[str, None] = None
     _paths: Union[dict[str, str], None] = None
@@ -97,23 +99,24 @@ class Taxonomy(ABC):
     _gen_code_id_start_codons_dict = dict()
 
     # ----------------------------------------------------------------------
-    def __new__(cls, data_dir=None, logger=Log):
+    def __new__(cls, data_dir: Union[str, None] = None, logger: Any = Log):
         super().__new__(cls)
         cls._data_dir = data_dir
         cls._logger = logger
         return cls
 
     @classmethod  # --------------------------------------------------------
-    def init(cls):
+    def init(cls, check_for_updates: bool = False):
         if cls._taxonomy_initialized is True:
             cls._logger.inf('Already initialized.')
             return 1
         if cls._data_dir is None:
-            paths = init_local_storage()
+            paths = init_local_storage(logger=cls._logger)
         else:
-            paths = init_local_storage(dir_local_storage=cls._data_dir)
+            paths = init_local_storage(dir_local_storage=cls._data_dir,
+                                       logger=cls._logger)
         cls._paths = paths
-        cls.update()
+        cls.update(check_for_updates)
         return 0
 
     @classmethod  # --------------------------------------------------------
@@ -132,6 +135,9 @@ class Taxonomy(ABC):
         if download_taxdmp is False:
             if cls._taxonomy_initialized is True:
                 return 'no_changes'
+
+        cls._logger.msg('Loading NCBI taxonomy data.', '')
+        print()
 
         cls._codons = codons_from_gc_prt_file(cls._paths['file_gc'])
 
@@ -222,7 +228,8 @@ class Taxonomy(ABC):
 
     @classmethod  # --------------------------------------------------------
     @abstractmethod
-    def lineage_of_names(cls, taxid: int, name_class: str) -> list[str]:
+    def lineage_of_names(cls, taxid: int, name_class: str = 'scientific name'
+                         ) -> list[str]:
         ...
 
     @classmethod  # --------------------------------------------------------
@@ -262,8 +269,8 @@ class Taxonomy(ABC):
 
     @classmethod  # --------------------------------------------------------
     @abstractmethod
-    def higher_rank_for_taxid(cls, taxid: int, rank: str, name_class: str
-                              ) -> str:
+    def higher_rank_for_taxid(cls, taxid: int, rank: str,
+                              name_class: str = 'scientific name') -> str:
         ...
 
     @classmethod  # --------------------------------------------------------
@@ -311,7 +318,7 @@ class Taxonomy(ABC):
     @classmethod  # --------------------------------------------------------
     @_check_initialized
     def names_of_class_for_taxid(cls, taxid: int, name_class: str
-                                 ) -> tuple[str]:
+                                 ) -> tuple[str, ...]:
         cls.taxid_valid_raise(taxid)
         if name_class not in cls.name_classes():
             raise NameClassInvalidError(name_class)

@@ -1,10 +1,11 @@
 from collections.abc import Collection, MutableSequence
+from typing import Any, Union
 
 from kakapo.utils.misc import invert_dict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .config import init_db
+from .config import init_db, populate_db
 from .model_sql import DeletedNode, MergedNode, Name, Node
 from .taxonomy_base import (Taxonomy, _check_initialized, name_variations,
                             path_between_lineages)
@@ -18,23 +19,26 @@ class TaxonomySQL(Taxonomy):
 
     # ----------------------------------------------------------------------
     def __new__(cls,
-                data_dir=None,
-                logger=Log,
-                backend='SQLite',
-                db_user='',
-                db_pass='',
-                db_host_or_ip='localhost',
-                db_name='taxonomy'):
+                data_dir: Union[str, None] = None,
+                logger: Any = Log,
+                backend: str = 'SQLite',
+                db_user: str = '',
+                db_pass: str = '',
+                db_host_or_ip: str = 'localhost',
+                db_name: str = 'taxonomy',
+                check_for_updates: bool = False):
 
         super().__new__(cls, data_dir=data_dir, logger=logger)
 
-        cls.init(backend, db_user, db_pass, db_host_or_ip, db_name)
+        cls.init(backend, db_user, db_pass, db_host_or_ip, db_name,
+                 check_for_updates)
 
         return cls
 
     @classmethod  # --------------------------------------------------------
-    def init(cls, backend, db_user, db_pass, db_host_or_ip, db_name):
-        if super().init() == 1:
+    def init(cls, backend, db_user, db_pass, db_host_or_ip, db_name,
+             check_for_updates):
+        if super().init(check_for_updates) == 1:
             return 1
 
         assert cls._paths is not None
@@ -59,12 +63,21 @@ class TaxonomySQL(Taxonomy):
             url = f'postgresql+psycopg2://{db_login}{db_host_or_ip}/{db_name}'
 
         cls._sess = init_db(url)()
+
+        try:
+            stmt = select(Node).where(Node.tax_id == 1)
+            nodes = cls._sess.scalars(stmt).all()
+            assert len(nodes) == 1
+        except AssertionError as e:
+            populate_db(cls._paths, cls._sess, cls._logger)
+            print()
+
         cls._taxonomy_initialized = True
         cls._root_node = cls.node_for_taxid(cls._root_taxid)
 
     @classmethod  # --------------------------------------------------------
-    def update(cls, check_for_updates=False):
-        super().update(check_for_updates=check_for_updates)
+    def update(cls, check_for_updates: bool = False):
+        super().update(check_for_updates)
 
     # **********************************************************************
     # Operations on integer taxids.
@@ -119,7 +132,7 @@ class TaxonomySQL(Taxonomy):
     @classmethod  # --------------------------------------------------------
     @_check_initialized
     def lineage_of_taxids(cls, taxid: int) -> list[int]:
-        cls.taxid_valid_raise(taxid)
+        # cls.taxid_valid_raise(taxid)
         nd = cls.node_for_taxid(taxid)
         ln = cls.lineage_of_nodes(nd)
         ln_taxid = [n.tax_id for n in ln]
@@ -128,7 +141,7 @@ class TaxonomySQL(Taxonomy):
     @classmethod  # --------------------------------------------------------
     @_check_initialized
     def lineage_of_ranks(cls, taxid: int) -> list[str]:
-        cls.taxid_valid_raise(taxid)
+        # cls.taxid_valid_raise(taxid)
         nd = cls.node_for_taxid(taxid)
         ln = cls.lineage_of_nodes(nd)
         ln_rank = [n.rank for n in ln]
@@ -138,7 +151,7 @@ class TaxonomySQL(Taxonomy):
     @_check_initialized
     def lineage_of_names(cls, taxid: int, name_class: str = 'scientific name'
                          ) -> list[str]:
-        cls.taxid_valid_raise(taxid)
+        # cls.taxid_valid_raise(taxid)
         ln_taxid = cls.lineage_of_taxids(taxid)
         ln_name = [cls.name_for_taxid(x, name_class) for x in ln_taxid]
         return ln_name
@@ -153,7 +166,7 @@ class TaxonomySQL(Taxonomy):
     @classmethod  # --------------------------------------------------------
     @_check_initialized
     def names_for_taxid(cls, taxid: int) -> dict[str, tuple[str]]:
-        cls.taxid_valid_raise(taxid)
+        # cls.taxid_valid_raise(taxid)
         nd = cls.node_for_taxid(taxid)
         return cls.names_for_node(nd)
 
@@ -164,7 +177,9 @@ class TaxonomySQL(Taxonomy):
         if len(name) != 0:
             names = name_variations(name)
             stmt = select(Name.tax_id).where(Name.name.in_(names))
-            return list(set(cls._sess.scalars(stmt).all()))
+            ids = list(set(cls._sess.scalars(stmt).all()))
+            ids.sort()
+            return ids
         else:
             return list()
 
@@ -181,21 +196,21 @@ class TaxonomySQL(Taxonomy):
     @classmethod  # --------------------------------------------------------
     @_check_initialized
     def rank_for_taxid(cls, taxid: int) -> str:
-        cls.taxid_valid_raise(taxid)
+        # cls.taxid_valid_raise(taxid)
         nd = cls.node_for_taxid(taxid)
         return nd.rank
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
     def parent_taxid(cls, taxid: int) -> int:
-        cls.taxid_valid_raise(taxid)
+        # cls.taxid_valid_raise(taxid)
         nd = cls.node_for_taxid(taxid)
         return nd.parent_tax_id
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
     def children_taxids(cls, taxid: int) -> set[int]:
-        cls.taxid_valid_raise(taxid)
+        # cls.taxid_valid_raise(taxid)
         taxid = cls.updated_taxid(taxid)
         nd = cls.node_for_taxid(taxid)
         return set(cls.taxids_for_nodes(nd.children))
@@ -205,7 +220,7 @@ class TaxonomySQL(Taxonomy):
     def higher_rank_for_taxid(cls, taxid: int, rank: str,
                               name_class: str = 'scientific name'
                               ) -> str:
-        cls.taxid_valid_raise(taxid)
+        # cls.taxid_valid_raise(taxid)
         ln_rank = cls.lineage_of_ranks(taxid)
         if rank in ln_rank:
             rank_index = ln_rank.index(rank)
@@ -216,14 +231,14 @@ class TaxonomySQL(Taxonomy):
     @classmethod  # --------------------------------------------------------
     @_check_initialized
     def genetic_code_for_taxid(cls, taxid: int) -> int:
-        cls.taxid_valid_raise(taxid)
+        # cls.taxid_valid_raise(taxid)
         nd = cls.node_for_taxid(taxid)
         return nd.genetic_code_id
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
     def mito_genetic_code_for_taxid(cls, taxid: int) -> int:
-        cls.taxid_valid_raise(taxid)
+        # cls.taxid_valid_raise(taxid)
         nd = cls.node_for_taxid(taxid)
         mtgcid = nd.mitochondrial_genetic_code_id
         if mtgcid is None:
@@ -234,15 +249,21 @@ class TaxonomySQL(Taxonomy):
     # Operations on Node objects.
     # **********************************************************************
 
+    _taxid_node_dict: dict[int, Node] = dict()
+
     @classmethod  # --------------------------------------------------------
     @_check_initialized
     def node_for_taxid(cls, taxid: int) -> Node:
+        if taxid in cls._taxid_node_dict:
+            return cls._taxid_node_dict[taxid]
         cls.taxid_valid_raise(taxid)
         txid = cls.updated_taxid(taxid)
         stmt = select(Node).where(Node.tax_id == txid)
-        node = cls._sess.scalars(stmt).all()
-        assert len(node) == 1
-        return node[0]
+        nodes = cls._sess.scalars(stmt).all()
+        assert len(nodes) == 1
+        node = nodes[0]
+        cls._taxid_node_dict[taxid] = node
+        return node
 
     @classmethod  # --------------------------------------------------------
     @_check_initialized
@@ -262,13 +283,17 @@ class TaxonomySQL(Taxonomy):
     @classmethod  # --------------------------------------------------------
     @_check_initialized
     def lineage_of_nodes(cls, node: Node) -> list[Node]:
-
-        @staticmethod  # ---------------------------------------------------
+        # ------------------------------------------------------------------
         def recurse_lineage(n: Node, lineage: MutableSequence[Node]
                             ) -> list[Node]:
             lineage.append(n)
             if n != cls.root_node():
-                n = n.parent
+                parent_taxid = n.parent_tax_id
+                if parent_taxid in cls._taxid_node_dict:
+                    n = cls._taxid_node_dict[parent_taxid]
+                else:
+                    n = n.parent
+                    cls._taxid_node_dict[n.tax_id] = n
                 return recurse_lineage(n, lineage)
             else:
                 return list(lineage)

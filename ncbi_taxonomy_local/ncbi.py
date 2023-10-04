@@ -22,8 +22,9 @@ TAXDMP_FILES = {
     'readme': 'readme.txt'}
 
 
-def update_ncbi_taxonomy_data(taxdmp_path, force_redownload=False,
-                              check_for_updates=True, logger=Log):
+def update_ncbi_taxonomy_data(taxdmp_path: str, force_redownload: bool = False,
+                              check_for_updates: bool = True,
+                              logger: Any = Log):
 
     download_taxdmp = False
     taxdmp_zip_path = opj(taxdmp_path, TAXDMP_ZIP)
@@ -52,13 +53,13 @@ def update_ncbi_taxonomy_data(taxdmp_path, force_redownload=False,
                     download_taxdmp = True
 
     if download_taxdmp is True:
-        logger.inf('Updating NCBI taxonomy data.')
+        logger.msg('Updating NCBI taxonomy data.', '')
         if os.path.exists(taxdmp_md5_path):
-            logger.inf('Backing up existing taxdmp directory.')
+            logger.msg('Backing up existing taxdmp directory.', '')
             rmtree(f'{taxdmp_path}.bak', ignore_errors=True)
             move(taxdmp_path, f'{taxdmp_path}.bak')
             make_dirs(taxdmp_path)
-        logger.inf('Downloading taxdmp file from NCBI.')
+        logger.msg('Downloading taxdmp file from NCBI.', '')
         dnld_zip_check_md5_then_extract(
             directory_path=taxdmp_path,
             zip_url=f'{TAX_BASE_URL}{TAXDMP_ZIP}',

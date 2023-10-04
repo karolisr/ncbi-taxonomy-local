@@ -1,4 +1,5 @@
 from collections.abc import Collection
+from typing import Any, Union
 
 from kakapo.utils.misc import invert_dict
 
@@ -26,27 +27,26 @@ class TaxonomyRAM(Taxonomy):
     _taxids_mito_genetic_code_id_dict = dict()
 
     # ----------------------------------------------------------------------
-    def __new__(cls, data_dir=None, logger=Log):
+    def __new__(cls, data_dir: Union[str, None] = None, logger: Any = Log,
+                check_for_updates: bool = False):
         super().__new__(cls, data_dir=data_dir, logger=logger)
-        cls.init()
+        cls.init(check_for_updates)
         return cls
 
     @classmethod  # --------------------------------------------------------
-    def init(cls):
-        if super().init() == 1:
+    def init(cls, check_for_updates: bool = False):
+        if super().init(check_for_updates) == 1:
             return 1
         cls._taxonomy_initialized = True
 
     @classmethod  # --------------------------------------------------------
-    def update(cls, check_for_updates=False):
-        status = super().update(check_for_updates=check_for_updates)
+    def update(cls, check_for_updates: bool = False):
+        status = super().update(check_for_updates)
 
         if status == 'not_initialized' or status == 'no_changes':
             return
 
         assert cls._paths is not None
-
-        cls._logger.msg('Loading NCBI taxonomy data.')
 
         tax_dict = parse_names_dump(cls._paths['file_names'])
         cls._names_taxids_dict = tax_dict['name_keyed_dict']
@@ -156,7 +156,9 @@ class TaxonomyRAM(Taxonomy):
             names = name_variations(name)
             for name in names:
                 if name in cls._names_taxids_dict:
-                    return cls._names_taxids_dict[name]
+                    ids = [x['tax_id'] for x in cls._names_taxids_dict[name]]
+                    ids.sort()
+                    return ids
         return list()
 
     @classmethod  # --------------------------------------------------------

@@ -1,7 +1,7 @@
-import contextlib
+# import contextlib
 from os.path import join as opj
 
-import sqlalchemy.exc
+# import sqlalchemy.exc
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -13,7 +13,6 @@ from .populate_sql import (populate_citations_table, populate_codons_table,
                            populate_genetic_codes_table, populate_images_table,
                            populate_merged_nodes_table, populate_names_table,
                            populate_nodes_table)
-
 from .utils import Log, make_dirs
 
 DIR_BASE = opj('~', '.local', 'share', 'ncbi-taxonomy-local')
@@ -117,38 +116,38 @@ def populate_db(paths: dict[str, str], session: Session, logger=Log):
 
     msg = 'Populating table:'
 
-    Log.wrn(msg, 'divisions')
+    logger.msg(msg, 'divisions')
     # 1
     populate_divisions_table(file_division, session)
 
-    Log.wrn(msg, 'codons')
+    logger.msg(msg, 'codons')
     # 2
     populate_codons_table(file_gc, session)
 
-    Log.wrn(msg, 'genetic_codes')
+    logger.msg(msg, 'genetic_codes')
     # 3
     populate_genetic_codes_table(file_gencode, session)
 
-    Log.wrn(msg, 'deleted_nodes')
+    logger.msg(msg, 'deleted_nodes')
     # 4
     populate_deleted_nodes_table(file_delnodes, session)
 
-    Log.wrn(msg, 'nodes')
+    logger.msg(msg, 'nodes')
     # 5
     populate_nodes_table(file_nodes, session)
 
-    Log.wrn(msg, 'merged_nodes')
+    logger.msg(msg, 'merged_nodes')
     # 6
     populate_merged_nodes_table(file_merged, session)
 
-    Log.wrn(msg, 'names')
+    logger.msg(msg, 'names')
     # 7
     populate_names_table(file_names, session)
 
-    Log.wrn(msg, 'citations')
+    logger.msg(msg, 'citations')
     # 8
     populate_citations_table(file_citations, session)
 
-    Log.wrn(msg, 'images')
+    logger.msg(msg, 'images')
     # 9
     populate_images_table(file_images, session)
