@@ -82,8 +82,8 @@ def rows_from_dmp_lines(lines: list[str]):
     row_trm = '|'
     fld_trm = '\t|'
 
-    ls = map(lambda l: l.strip(row_trm), lines)
-    return map(lambda l: tuple(map(lambda f: f.strip(), l.split(fld_trm))), ls)
+    ls = map(lambda x: x.strip(row_trm), lines)
+    return map(lambda x: tuple(map(lambda f: f.strip(), x.split(fld_trm))), ls)
 
 
 def rows_from_dmp_file(file_path):

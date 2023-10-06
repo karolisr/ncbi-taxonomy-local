@@ -1,5 +1,6 @@
 """Miscellaneous helper functions."""
 
+from collections import OrderedDict, defaultdict
 from difflib import unified_diff
 from hashlib import md5
 from os import makedirs
@@ -8,7 +9,7 @@ from os.path import exists as ope
 from os.path import expanduser
 from subprocess import CalledProcessError, CompletedProcess
 from subprocess import run as subp_run
-from typing import Any
+from typing import Any, Mapping
 from urllib.request import urlretrieve
 from zipfile import ZipFile
 
@@ -203,3 +204,33 @@ def diff_files(old, new):
             add_lines.append(dl[1:-1])
 
     return drop_lines, add_lines
+
+
+# ToDo: copied from kakapo; refactor, keep synced manually until then.
+def invert_dict(d: Mapping, value_iterable_type: type = tuple,
+                force_return_dict_values_iterable: bool = False):
+    d_type = type(d)
+    d_inv: Mapping = defaultdict(list)
+    iterable_not_str = (set, list, tuple)
+    for k, v in d.items():
+        if type(v) in iterable_not_str:
+            for x in v:
+                d_inv[x].append(k)
+        elif type(v) in [str, int]:
+            d_inv[v].append(k)
+    v_lengths = {len(x) for x in list(d_inv.values())}
+    if len(v_lengths) == 1 and force_return_dict_values_iterable is False:
+        if v_lengths.pop() == 1:
+            for k in d_inv:
+                d_inv[k] = d_inv[k][0]
+    else:
+        for k in d_inv:
+            d_inv[k] = list(d_inv[k], )
+            d_inv[k] = value_iterable_type(d_inv[k])
+    rval: Mapping
+    assert d_type in (dict, OrderedDict)
+    if d_type is OrderedDict:
+        rval = OrderedDict(sorted(d_inv.items(), key=lambda x: x[0]))
+    else:
+        rval = d_type(d_inv)
+    return rval

@@ -1,13 +1,11 @@
 from collections.abc import Collection
 from typing import Any, Union
 
-from kakapo.utils.misc import invert_dict
-
 from .ncbi import (parse_delnodes_dump, parse_merged_dump, parse_names_dump,
                    parse_nodes_dump)
 from .taxonomy_base import (Taxonomy, _check_initialized, name_variations,
                             path_between_lineages)
-from .utils import Log
+from .utils import Log, invert_dict
 
 
 class TaxonomyRAM(Taxonomy):

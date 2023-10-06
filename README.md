@@ -4,19 +4,13 @@ Locally-cached NCBI Taxonomy Database for Python 3
 Installation:
 
 ```bash
-pip3 install --user --upgrade git+https://github.com/karolisr/ncbi-taxonomy-local
-```
-
-or:
-
-```bash
 pip3 install --upgrade git+https://github.com/karolisr/ncbi-taxonomy-local
 ```
 
 Initialization:
 
 ```python
-from ncbi_taxonomy_local import Taxonomy
+from ncbi_taxonomy_local import Tax
 ```
 
 ```python
@@ -24,9 +18,9 @@ from ncbi_taxonomy_local import Taxonomy
 #   - Slightly slower queries
 #   - Instant loading time
 #   - Lower RAM usage
-tax = Taxonomy()
+tax = Tax()
 # or
-tax = Taxonomy(backend='SQL')
+tax = Tax(backend='SQLite')
 ```
 
 ```python
@@ -34,7 +28,7 @@ tax = Taxonomy(backend='SQL')
 #   - Faster queries
 #   - Slower loading time
 #   - Higher RAM usage
-tax = Taxonomy(backend='RAM')
+tax = Tax(backend='RAM')
 ```
 
 Usage Examples:
@@ -44,7 +38,7 @@ tax.taxids_for_name('Solanum')
 tax.taxids_for_name('Solanum chilense')
 tax.names_for_taxid(3701)
 tax.names_for_taxid(3702)
-tax.lineage_for_taxid(3701)
+tax.lineage_of_taxids(3701)
 tax.common_name_for_taxid(3702)
 tax.taxids_for_name('Homo')
 tax.taxids_for_name('ape')

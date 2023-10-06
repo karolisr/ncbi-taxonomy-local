@@ -1,7 +1,6 @@
 from collections.abc import Collection, MutableSequence
 from typing import Any, Union
 
-from kakapo.utils.misc import invert_dict
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -9,7 +8,7 @@ from .config import init_db, populate_db
 from .model_sql import DeletedNode, MergedNode, Name, Node
 from .taxonomy_base import (Taxonomy, _check_initialized, name_variations,
                             path_between_lineages)
-from .utils import Log
+from .utils import Log, invert_dict
 
 
 class TaxonomySQL(Taxonomy):

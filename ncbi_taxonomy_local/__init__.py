@@ -11,14 +11,14 @@ from .utils import Log
 class Tax:
 
     def __new__(cls,
-                backend: str = 'RAM',
+                backend: str = 'SQLite',
                 data_dir: Union[str, None] = None,
                 logger: Any = Log,
                 db_user: str = '',
                 db_pass: str = '',
                 db_host_or_ip: str = 'localhost',
                 db_name: str = 'taxonomy',
-                check_for_updates: bool = False):
+                check_for_updates: bool = False) -> Taxonomy:
 
         if backend in ('RAM', 'SQLite', 'PostgreSQL'):
 
