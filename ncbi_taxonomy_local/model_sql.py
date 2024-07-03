@@ -11,34 +11,34 @@ class BaseSQLModel(DeclarativeBase):
 
 
 assoc_table_nodes_citations = Table(
-    'assoc_nodes_citations', BaseSQLModel.metadata,
-    Column('tax_id', ForeignKey('nodes.tax_id'), primary_key=True),
-    Column('citation_id', ForeignKey('citations.id'), primary_key=True))
+    'tx_assoc_nodes_citations', BaseSQLModel.metadata,
+    Column('tax_id', ForeignKey('tx_nodes.tax_id'), primary_key=True),
+    Column('citation_id', ForeignKey('tx_citations.id'), primary_key=True))
 
 assoc_table_nodes_images = Table(
-    'assoc_nodes_images', BaseSQLModel.metadata,
-    Column('tax_id', ForeignKey('nodes.tax_id'), primary_key=True),
-    Column('img_id', ForeignKey('images.id'), primary_key=True))
+    'tx_assoc_nodes_images', BaseSQLModel.metadata,
+    Column('tax_id', ForeignKey('tx_nodes.tax_id'), primary_key=True),
+    Column('img_id', ForeignKey('tx_images.id'), primary_key=True))
 
 
 class Node(BaseSQLModel):
-    __tablename__ = 'nodes'
+    __tablename__ = 'tx_nodes'
 
     tax_id: Mapped[int] = mapped_column(primary_key=True)
-    parent_tax_id: Mapped[int] = mapped_column(ForeignKey('nodes.tax_id'),
+    parent_tax_id: Mapped[int] = mapped_column(ForeignKey('tx_nodes.tax_id'),
                                                index=True)
     rank: Mapped[str]
     embl_code: Mapped[Optional[str]]
-    division_id: Mapped[int] = mapped_column(ForeignKey('divisions.id'))
+    division_id: Mapped[int] = mapped_column(ForeignKey('tx_divisions.id'))
     # inherited_div_flag: Mapped[bool]
 
     genetic_code_id: Mapped[int] = mapped_column(
-        ForeignKey('genetic_codes.id'))
+        ForeignKey('tx_genetic_codes.id'))
 
     # inherited_GC_flag: Mapped[bool]
 
     mitochondrial_genetic_code_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey('genetic_codes.id'))
+        ForeignKey('tx_genetic_codes.id'))
 
     # inherited_MGC_flag: Mapped[bool]
     genbank_hidden_flag: Mapped[bool]
@@ -69,10 +69,10 @@ class Node(BaseSQLModel):
 
 
 class Name(BaseSQLModel):
-    __tablename__ = 'names'
+    __tablename__ = 'tx_names'
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    tax_id: Mapped[int] = mapped_column(ForeignKey('nodes.tax_id'), index=True)
+    tax_id: Mapped[int] = mapped_column(ForeignKey('tx_nodes.tax_id'), index=True)
     name: Mapped[str] = mapped_column(index=True)
     unique_name: Mapped[Optional[str]]
     name_class: Mapped[str] = mapped_column(index=True)
@@ -84,7 +84,7 @@ class Name(BaseSQLModel):
 
 
 class Division(BaseSQLModel):
-    __tablename__ = 'divisions'
+    __tablename__ = 'tx_divisions'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     code: Mapped[str] = mapped_column(String(3))
@@ -99,7 +99,7 @@ class Division(BaseSQLModel):
 
 
 class GeneticCode(BaseSQLModel):
-    __tablename__ = 'genetic_codes'
+    __tablename__ = 'tx_genetic_codes'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     # abbreviation: Mapped[Optional[str]]
@@ -112,7 +112,7 @@ class GeneticCode(BaseSQLModel):
 
 
 class DeletedNode(BaseSQLModel):
-    __tablename__ = 'deleted_nodes'
+    __tablename__ = 'tx_deleted_nodes'
 
     tax_id: Mapped[int] = mapped_column(primary_key=True)
 
@@ -121,10 +121,10 @@ class DeletedNode(BaseSQLModel):
 
 
 class MergedNode(BaseSQLModel):
-    __tablename__ = 'merged_nodes'
+    __tablename__ = 'tx_merged_nodes'
 
     old_tax_id: Mapped[int] = mapped_column(primary_key=True)
-    new_tax_id: Mapped[int] = mapped_column(ForeignKey('nodes.tax_id'))
+    new_tax_id: Mapped[int] = mapped_column(ForeignKey('tx_nodes.tax_id'))
 
     def __repr__(self) -> str:
         return f'MergedNode(old_tax_id={self.old_tax_id!r}, ' \
@@ -132,7 +132,7 @@ class MergedNode(BaseSQLModel):
 
 
 class Citation(BaseSQLModel):
-    __tablename__ = 'citations'
+    __tablename__ = 'tx_citations'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     citation_key: Mapped[Optional[str]]
@@ -150,7 +150,7 @@ class Citation(BaseSQLModel):
 
 
 class Image(BaseSQLModel):
-    __tablename__ = 'images'
+    __tablename__ = 'tx_images'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     image_key: Mapped[str]
@@ -169,7 +169,7 @@ class Image(BaseSQLModel):
 
 
 class Codon(BaseSQLModel):
-    __tablename__ = 'codons'
+    __tablename__ = 'tx_codons'
 
     id: Mapped[int] = mapped_column(primary_key=True)
     codon: Mapped[str] = mapped_column(String(3))
